@@ -22,7 +22,10 @@ for in_data in args.frames:
 	print >> sys.stderr, '\r',
 	frame = read_data_typeselect(in_data)
 	sys.stderr.write('Frame natom: '+str(frame.n_atom())+' Frame nbonds: '+str(frame.n_bond())+'\n')
-	if len(args.chains) > 0:
-		frame = select_chains(frame, args.chains)
+	try:
+		if len(args.chains) > 0:
+			frame = select_chains(frame, args.chains)
+			CalculateBackboneCorrelations(frame, args.bondtypes, args.max)
+	except TypeError:
 		CalculateBackboneCorrelations(frame, args.bondtypes, args.max)
 print '\n',

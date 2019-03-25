@@ -9,7 +9,7 @@ def CalculateBackboneCorrelations(config, bond_types, k_max = None):
 	natom = config.n_atom()
 	nbonds = config.n_bond()
 	sys.stderr.write('Natom: '+str(natom)+' Nbonds: '+str(nbonds)+'\n')
-	molecules_index, molecules_atoms = GetMoleculeAtomLists(config)
+	molecules_index, molecules_atoms = GetMoleculeAtomlists(config)
 	all_bonds = []
 	for i in range(len(molecules_index)):
 		molecule_id = molecules_index[i]
