@@ -1,5 +1,6 @@
 import lammpack_types
 import vector3d
+from natsort import natsorted
 
 def AtomFromPdbLine(line):
 	"""Returns an Atom object from an atom line in a pdb file."""
@@ -59,7 +60,7 @@ def BondsFromPdbLine(line, config):
 			type1 = config.atom_by_num(bond_atom1).type
 			type2 = config.atom_by_num(bond_atom2).type
 			types = [type1, type2]
-			types.sort()
+			types = natsorted(types)
 			bond.type = str(types[0]) + str(types[1])
 		except: pass
 		bonds.append(bond)
