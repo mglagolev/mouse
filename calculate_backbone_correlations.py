@@ -25,4 +25,6 @@ for in_data in args.frames:
 	if len(args.chains) > 0:
 		frame = select_chains(frame, args.chains)
 		CalculateBackboneCorrelations(frame, args.bondtypes, args.max)
+	else:
+		CalculateBackboneCorrelations(frame, args.bondtypes, args.max)
 print '\n',
