@@ -2,9 +2,10 @@ import lammpack_types
 import vector3d
 from natsort import natsorted
 
-def AtomFromPdbLine(line):
+def AtomFromPdbLine(line, inum = 0):
 	"""Returns an Atom object from an atom line in a pdb file."""
 	atom = lammpack_types.Atom()
+	atom.inum = inum
 	if line.startswith('HETATM'):
 		atom.is_hetatm = True
 	else:
@@ -54,15 +55,15 @@ def BondsFromPdbLine(line, config):
 		bond = lammpack_types.Bond()
 		bond_num += 1
 		bond.num = bond_num
-		bond.atom1.num = bond_atom1
-		bond.atom2.num = bond_atom2
 		try:
-			type1 = config.atom_by_num(bond_atom1).type
-			type2 = config.atom_by_num(bond_atom2).type
-			types = [type1, type2]
-			types = natsorted(types)
+			bond.atom1 = config.atom_by_num(bond_atom1)
+			bond.atom2 = config.atom_by_num(bond_atom2)
+			type1, type2 = bond.atom1.type, bond.atom2.type
+			types = natsorted([type1, type2])
 			bond.type = str(types[0]) + str(types[1])
-		except: pass
+		except:
+			bond.atom1.num = bond_atom1
+			bond.atom2.num = bond_atom2
 		bonds.append(bond)
 	return bonds
 

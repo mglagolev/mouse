@@ -28,6 +28,8 @@ class Atom:
 		self.occupancy = 0.0
 		self.num = 0
 		self.pbc = vector3d.Vector3d(0,0,0)
+		self.neighbors = []
+		self.inum = 0 #Internal number within a frame
 
 	def pdb_str(self):
 		if self.is_hetatm:
@@ -56,6 +58,12 @@ class Atom:
 		self.type[:5], self.num,
 		self.pos.x, self.pos.y, self.pos.z,
 		self.vel.x, self.vel.y, self.vel.z)
+
+	def add_neighbor(self, atom):
+		self.neighbors.append(atom)
+
+	def remove_neighbor(self, atom):
+		self.neighbors.remove(atom)
 
 
 class Bond:
@@ -136,6 +144,9 @@ class Config:
 		for atom in self._atoms:
 			if atom.num == i:
 				return atom
+	def atom_by_inum(self, i):
+		atomIndex = [ x.inum for x in self._atoms ].index(i)
+		return self._atoms[atomIndex]
 
 	def atom_by_id(self, s):
 		for atom in  self._atoms:
@@ -190,12 +201,14 @@ class Config:
 
 	def read_pdb(self, fname):
 		self.clear()
+		inum = 1
 		for line in open(fname, 'r').readlines():
 			if line.startswith("ATOM") or line.startswith("HETATM"):
-				atom = AtomFromPdbLine(line)
+				atom = AtomFromPdbLine(line, inum)
 				if len(self._atoms) == 1:
 					self.id = atom.mol_id
 				self.insert_atom(atom)
+				inum += 1
 			if line.startswith("CONECT"):
 				bonds = BondsFromPdbLine(line, self)
 				for bond in bonds:
