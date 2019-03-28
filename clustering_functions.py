@@ -27,6 +27,8 @@ def firstMissingInteger(somelist):		#find the first missing positive integer in 
 		
 
 def makeNeighborlistsFromBonds(config):
+	for atom in config.atoms():
+		atom.neighbors = []
 	for bond in config.bonds():
 		atom1 = bond.atom1
 		atom2 = bond.atom2
@@ -47,3 +49,11 @@ def determineClusters(config):
 		sys.stderr.write("\rChecked: " + str(len(allAtomsCheckedInums)))
 		startAtomInum = firstMissingInteger(allAtomsCheckedInums)
 	return all_aggregates
+
+
+def assignMoleculesFromBonds(config):
+	makeNeighborlistsFromBonds(config)
+	molecules = determineClusters(config)
+	for nmol in range(len(molecules)):
+		for atom in molecules[nmol]:
+			atom.mol_id = str(nmol)

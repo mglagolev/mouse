@@ -9,6 +9,7 @@ import vector3d
 from lammpack_lmp_functions import *
 from lammpack_pdb_functions import *
 from gro_functions import *
+from clustering_functions import *
 import functools
 
 class Atom:
@@ -219,6 +220,10 @@ class Config:
 			if line.startswith("CRYST1"):
 				box = BoxFromPdbLine(line)
 				self.set_box(box)
+		for atom in self._atoms:
+			if atom.mol_id == "" or atom.mol_id == " ":
+				assignMoleculesFromBonds(self)
+				break
 
 	def write_pdb(self, pdb, hide_pbc_bonds = False):
 		f = open(pdb, 'w')
