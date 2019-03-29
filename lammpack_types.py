@@ -40,7 +40,7 @@ class Atom:
 		return "%6s%5s %4s %3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f" \
             % (field, self.num, 
                pad_atom_type(self.type),
-               self.res_type, self.mol_id,
+               self.res_type, self.mol_id[:1],
                self.res_num, self.res_insert,
                self.pos.x, self.pos.y, self.pos.z,
                self.occupancy, self.bfactor)
