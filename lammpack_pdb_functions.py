@@ -52,19 +52,17 @@ def BondsFromPdbLine(line, config):
 		except ValueError:
 			break
 	for bond_atom2 in bond_atom2_list:
-		bond = lammpack_types.Bond()
-		bond_num += 1
-		bond.num = bond_num
 		try:
+			bond = lammpack_types.Bond()
 			bond.atom1 = config.atom_by_num(bond_atom1)
 			bond.atom2 = config.atom_by_num(bond_atom2)
 			type1, type2 = bond.atom1.type, bond.atom2.type
 			types = natsorted([type1, type2])
 			bond.type = str(types[0]) + str(types[1])
-		except:
-			bond.atom1.num = bond_atom1
-			bond.atom2.num = bond_atom2
-		bonds.append(bond)
+			bond_num += 1
+			bond.num = bond_num
+			bonds.append(bond)
+		except: pass
 	return bonds
 
 def BoxFromPdbLine(line):
