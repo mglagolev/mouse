@@ -9,17 +9,17 @@ import random
 
 parser = argparse.ArgumentParser(description = 'Create a regular pattern of cubic domains')
 
-parser.add_argument('--natom', type = int, nargs = 1, help = 'number of particles')
+parser.add_argument('--natom', type = int, nargs = 1, required = True, help = 'number of particles')
 
-parser.add_argument('--size', type = float, nargs = 1, help = 'overall cell size')
+parser.add_argument('--size', type = float, nargs = 3, required = True, help = 'overall cell size')
 
-parser.add_argument('--nbin', type = int, nargs = 1, help = 'number of bins in the histogram')
+parser.add_argument('--nbin', type = int, nargs = 1, required = True, help = 'number of bins in the histogram')
 
-parser.add_argument('--rmin', type = float, nargs = 1, help = 'histogram start')
+parser.add_argument('--rmin', type = float, nargs = 1, default = 0., help = 'histogram start')
 
-parser.add_argument('--rmax', type = float, nargs = 1, help = 'histogram end')
+parser.add_argument('--rmax', type = float, nargs = 1, default = 0., help = 'histogram end')
 
-parser.add_argument('--icells', type = int, nargs = 3, help = 'number of cells: ix iy iz')
+parser.add_argument('--icells', type = int, nargs = 3, required = True, help = 'number of cells: ix iy iz')
 
 parser.add_argument('--pdb', type = str, nargs = '*', help = 'output .pdb file (optional)')
 
@@ -55,7 +55,7 @@ def chequers(x, y, z, ix, iy, iz):
 			else:
 				return 'B'
 
-box = vector3d.Vector3d(args.size[0], args.size[0], args.size[0])
+box = vector3d.Vector3d(args.size[0], args.size[1], args.size[2])
 frame = Config()
 frame.set_box(box)
 
@@ -66,15 +66,16 @@ for i in range(args.natom[0]):
 	z = random.random()
 	kind = chequers(x, y, z, args.icells[0], args.icells[1], args.icells[2])
 	atom = Atom()
-	pos = vector3d.Vector3d(x*args.size[0], y*args.size[0], z*args.size[0])
+	pos = vector3d.Vector3d(x*args.size[0], y*args.size[1], z*args.size[2])
 	atom.pos = pos
 	atom.type = kind
 	frame.insert_atom(atom)
 
-if len(args.pdb) > 0:
+try:
 	frame.write_pdb(args.pdb[0])
+except: pass
 
-rdfs = CalculatePairCorrelationFunctions(frame, rmin = args.rmin[0], rmax = args.rmax[0], nbin = args.nbin[0])
+rdfs = CalculatePairCorrelationFunctions(frame, rmin = args.rmin, rmax = args.rmax, nbin = args.nbin[0])
 
 pair_types = rdfs['data'].keys()[:]
 

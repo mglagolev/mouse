@@ -7,19 +7,20 @@ import numpy as np
 import sys
 
 
-def CalculatePairCorrelationFunctions(config, rmin = 0., rmax = 0., nbin = 100):
+def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 0., nbin = 100, sameMolecule = True):
 	if rmax <= 0.:
-		rmax = config.box().length() / 2.
+		rmax = min(config.box().x, config.box().y, config.box().z) / 2.
 	types = []
 	atoms = config.atoms()
 	atom_counter = {}
 	for atom in atoms:
-		try:
-			types.index(atom.type)
-			atom_counter[atom.type] += 1
-		except ValueError:
-			types.append(atom.type)
-			atom_counter[atom.type] = 1
+		if atomtypes is None or len(atomtypes) == 0 or ( atom.type in atomtypes ):
+			try:
+				types.index(atom.type)
+				atom_counter[atom.type] += 1
+			except ValueError:
+				types.append(atom.type)
+				atom_counter[atom.type] = 1
 	types.sort()
 	rdfs = {}
 	distances = []
@@ -47,13 +48,17 @@ def CalculatePairCorrelationFunctions(config, rmin = 0., rmax = 0., nbin = 100):
 		for j in range(i+1, len(atoms)):
 			type1 = atoms[i].type
 			type2 = atoms[j].type
-			pair_types = [type1, type2]
-			pair_types.sort()
-			pair_string = str(pair_types[0]) + '_' + str(pair_types[1])
-			dist = vector_pbc_trim(atoms[i].pos - atoms[j].pos, config.box()).length()
-			ihist = int( nbin * (dist - rmin) / (rmax - rmin))
-			if ihist >= 0 and ihist < nbin:
-				rdfdata[pair_string][ihist] += 1
+			if (type1 in types) and (type2 in types):
+				mol1 = atoms[i].mol_id
+				mol2 = atoms[j].mol_id
+				if sameMolecule or (mol1 != mol2):
+					pair_types = [type1, type2]
+					pair_types.sort()
+					pair_string = str(pair_types[0]) + '_' + str(pair_types[1])
+					dist = vector_pbc_trim(atoms[i].pos - atoms[j].pos, config.box()).length()
+					ihist = int( nbin * (dist - rmin) / (rmax - rmin))
+					if ihist >= 0 and ihist < nbin:
+						rdfdata[pair_string][ihist] += 1
 	rdfs['data'] = rdfdata
 	return rdfs
 
