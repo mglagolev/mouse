@@ -21,7 +21,7 @@ def printRdfs(rdfs):
 		sys.stdout.write(str(r))
 		sys.stdout.write("	" + str(v))
 		for key in orderedKeys:
-			sys.stdout.write("	" + str(rdfs['data'][key][nline] / rdfs['norm'][key] / r / v ))
+			sys.stdout.write("	" + str(rdfs['data'][key][nline] / rdfs['norm'][key] / v ))
 		sys.stdout.write("\n")
 
 parser = argparse.ArgumentParser(description = 'Calculate radial distribution functions')
