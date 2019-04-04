@@ -39,21 +39,25 @@ def determine_data_type( filename ):
 		return ftype_content
 
 
-def read_data_typeselect( filename, ftype=None ):
-#Read data file according to its file type
+def read_data_typeselect( filename, ftype=None, options = {} ):
+	"""
+	Read data file according to its file type
+
+	Type-specific options can be passed to the file-reading function through "options" key-value pairs
+	"""
 	if ftype is None or ftype == 'auto':
 		ftype = determine_data_type( filename )
 	readfunc = {'lammps_dump':1, 'lammps_data':2, 'pdb':3, 'gro':4}
 	if ftype in readfunc:
 		config = Config()
 		if ftype == 'lammps_dump':
-			config.read_lmp_dump(filename)
+			config.read_lmp_dump(filename, **options[ftype])
 		elif ftype == 'lammps_data':
-			config.read_lmp_data(filename)
+			config.read_lmp_data(filename, **options[ftype])
 		elif ftype == 'pdb':
-			config.read_pdb(filename)
+			config.read_pdb(filename, **options[ftype])
 		elif ftype == 'gro':
-			config.read_gro(filename)
+			config.read_gro(filename, **options[ftype])
 		return config
 	else:
 		error_str = "No handler function for file type " + ftype

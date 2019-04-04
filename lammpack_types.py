@@ -200,12 +200,23 @@ class Config:
 	def insert_dihedral(self, dihedral):
 		self._dihedrals.append(dihedral)
 
-	def read_pdb(self, fname):
+	def read_pdb(self, fname, assignMolecules = { "type" : "chainId", "cluster" : False }):
+		"""
+		Create new configuration from .pdb file.
+
+		assignMolecules:
+			"type":
+				"chainId": the molecules will be determined from "chainID" field (position 22 in "ATOM/HETATM" record).
+				"resSeq": the molecules will be determined from "resSeq" field (positions 23-26 in "ATOM/HETATM" record).
+			"cluster":
+				False: If the corresponding field is empty, "mol_id" will be left empty.
+				True: In case the field is empty for at least one atom, all "mol_id"s will be assigned by cluster determination algorithm based on atom connectivity.
+		"""
 		self.clear()
 		inum = 1
 		for line in open(fname, 'r').readlines():
 			if line.startswith("ATOM") or line.startswith("HETATM"):
-				atom = AtomFromPdbLine(line, inum)
+				atom = AtomFromPdbLine(line, inum, assignMolecules)
 				if len(self._atoms) == 1:
 					self.id = atom.mol_id
 				self.insert_atom(atom)
@@ -220,10 +231,11 @@ class Config:
 			if line.startswith("CRYST1"):
 				box = BoxFromPdbLine(line)
 				self.set_box(box)
-		for atom in self._atoms:
-			if atom.mol_id == "" or atom.mol_id == " ":
-				assignMoleculesFromBonds(self)
-				break
+		if assignMolecules["cluster"]:
+			for atom in self._atoms:
+				if atom.mol_id == "" or atom.mol_id == " ":
+					assignMoleculesFromBonds(self)
+					break
 
 	def write_pdb(self, pdb, hide_pbc_bonds = False):
 		f = open(pdb, 'w')

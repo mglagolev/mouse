@@ -2,7 +2,7 @@ import lammpack_types
 import vector3d
 from natsort import natsorted
 
-def AtomFromPdbLine(line, inum = 0):
+def AtomFromPdbLine(line, inum = 0, assignMolecules = { "type" : "chainId", "cluster" : False }):
 	"""Returns an Atom object from an atom line in a pdb file."""
 	atom = lammpack_types.Atom()
 	atom.inum = inum
@@ -18,7 +18,10 @@ def AtomFromPdbLine(line, inum = 0):
 			element += c
 	atom.element = element[0]
 	atom.res_type = line[17:20]
-	atom.mol_id = line[21]
+	if assignMolecules["type"] == "chainId":
+		atom.mol_id = line[21]
+	elif assignMolecules["type"] == "resSeq":
+		atom.mol_id = line[22:26].strip()
 	atom.res_num = int(line[22:26])
 	atom.res_insert = line[26]
 	if atom.res_insert == " ":
