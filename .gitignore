@@ -1,0 +1,4 @@
+*.pyc
+*.bkp
+__pycache__
+testing
