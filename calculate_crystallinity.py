@@ -18,11 +18,15 @@ parser.add_argument('--subcell', type = float, nargs = '*', help = 'rectangular 
 
 parser.add_argument('--reference', type = float, nargs = '*', help = 'optional reference direction vector components')
 
+parser.add_argument('--mol-id', type = str, nargs = 1, default = 'resSeq', help = ".pdb value to identify individual molecules, resSeq (default), or chainId")
+
 args = parser.parse_args()
+
+readOptions = { "pdb" : { "assignMolecules" : { "type" : args.mol_id, "cluster" : True }}}
 
 for in_data in args.frames:
 	print >> sys.stderr, '\r',
-	frame = read_data_typeselect(in_data)
+	frame = read_data_typeselect(in_data, options = readOptions)
 	sys.stderr.write('Frame natom: '+str(frame.n_atom())+'\n')
 	try:
 		if len(args.chains) > 0:
