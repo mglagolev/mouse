@@ -20,6 +20,8 @@ parser.add_argument('--reference', type = float, nargs = '*', help = 'optional r
 
 parser.add_argument('--mol-id', type = str, nargs = 1, default = 'resSeq', help = ".pdb value to identify individual molecules, resSeq (default), or chainId")
 
+parser.add_argument('--residue', type = str, nargs = '*', help = 'residue names for analysis')
+
 args = parser.parse_args()
 
 readOptions = { "pdb" : { "assignMolecules" : { "type" : args.mol_id, "cluster" : True }}}
@@ -27,13 +29,17 @@ readOptions = { "pdb" : { "assignMolecules" : { "type" : args.mol_id, "cluster" 
 for in_data in args.frames:
 	print >> sys.stderr, '\r',
 	frame = read_data_typeselect(in_data, options = readOptions)
-	sys.stderr.write('Frame natom: '+str(frame.n_atom())+'\n')
+	sys.stderr.write('Initial configuration: '+str(frame.n_atom())+' atoms\n')
 	try:
 		if len(args.chains) > 0:
 			frame = select_chains(frame, args.chains)
-	except TypeError:
-		pass
-	sys.stderr.write('Frame natom: '+str(frame.n_atom())+'\n')
+			sys.stderr.write('Molecule selection: '+str(frame.n_atom())+' atoms\n')	
+	except TypeError: pass
+	#try:
+	if len(args.residue) > 0:
+		frame = selectByAtomFields(frame, { "res_type" : args.residue })
+		sys.stderr.write('Residue selection: '+str(frame.n_atom())+' atoms\n')	
+	#except: pass
 	xrelmin, xrelmax, yrelmin, yrelmax, zrelmin, zrelmax = 0., 1., 0., 1., 0., 1.
 	cutx, cuty, cutz = False, False, False
 	try:
@@ -57,6 +63,6 @@ for in_data in args.frames:
 		reference_vector = vector3d.Vector3d(0., 0., 0.)
 	if cutx or cuty or cutz:
 		frame = select_rectangular(frame, cutx, xrelmin, xrelmax, cuty, yrelmin, yrelmax, cutz, zrelmin, zrelmax)
-	sys.stderr.write('Frame natom: '+str(frame.n_atom())+'\n')
+		sys.stderr.write('Rectangular selection: '+str(frame.n_atom())+' atoms\n')
 	s = CalculateCrystallinityParameter(frame, args.bondtypes, reference_vector = reference_vector)
 	print s

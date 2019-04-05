@@ -72,85 +72,84 @@ def vector_pbc_trim( vector, box ):
 	_vector_pbc_trim.set( x, y, z )
 	return _vector_pbc_trim
 
-def select_chains(config, chain_list):
-	new_config = Config()
-	#Read box, atoms, bonds, angles, dihedrals
-	atoms = config.atoms()
-	bonds = config.bonds()
-	angles = config.angles()
-	dihedrals = config.dihedrals()
-	#Set box
-	new_config.set_box(config.box())
-	new_config.set_box_center(config.box_center())
-	#For every atom check .mol Insert the atoms with the proper .mol
-	#Make list of valid atom .nums
-	atom_numbers = []
-	for atom in atoms:
+def selectConstraintsByAtom(config, atomsList):
+	newConstraints = { "bonds" : [], "angles" : [], "dihedrals" : [] }
+	atomNumbersList = [ x.num for x in atomsList ]
+	for bond in config.bonds():
 		try:
-			chain_list.index(atom.mol_id)
-			new_config.insert_atom(atom)
-			atom_numbers.append(atom.num)
+			atomNumbersList.index(bond.atom1.num)
+			atomNumbersList.index(bond.atom2.num)
+			newConstraints["bonds"].append(bond)
 		except ValueError: pass
-	#Check every bond, angle and dihedral across the list
-	for bond in bonds:
+	for angle in config.angles():
 		try:
-			atom_numbers.index(bond.atom1.num)
-			new_config.insert_bond(bond)
+			atomNumbersList.index(angle.atom1.num)
+			atomNumbersList.index(angle.atom2.num)
+			atomNumbersList.index(angle.atom3.num)
+			newConstraints["angles"].append(angle)
 		except ValueError: pass
-	for angle in angles:
+	for dihedral in config.dihedrals():
 		try:
-			atom_numbers.index(angle.atom1.num)
-			new_config.insert_angle(angle)
+			atomNumbersList.index(dihedral.atom1.num)
+			atomNumbersList.index(dihedral.atom2.num)
+			atomNumbersList.index(dihedral.atom3.num)
+			atomNumbersList.index(dihedral.atom4.num)
+			newConstraints["dihedrals"].append(dihedral)
 		except ValueError: pass
-	for dihedral in dihedrals:
+	return newConstraints
+
+
+def selectByAtomFields(config, selectionCriteria):
+	"""
+	Create new configuration with atoms selected by fields matching the criteria.
+
+	selectionCriteria: { fieldName1 : [ value1, value2, ... ], fieldName2 : [ value1, value2, ...] }
+
+	The bonds, angles and dihedrals with all atoms satisfying the criteria are also included to the new configuration.
+	"""
+	newConfig = Config()
+	newConfig.set_box(config.box())
+	newConfig.set_box_center(config.box_center())
+	for atom in config.atoms():
 		try:
-			atom_numbers.index(dihedral.atom1.num)
-			new_config.insert_dihedral(dihedral)
+			for fieldName in selectionCriteria:
+				fieldValue = getattr(atom, fieldName)
+				selectionCriteria[fieldName].index(fieldValue)
+			newConfig.insert_atom(atom)
 		except ValueError: pass
-	return new_config
+	newConstraints = selectConstraintsByAtom(config, newConfig.atoms())
+	newBonds, newAngles, newDihedrals = newConstraints["bonds"], newConstraints["angles"], newConstraints["dihedrals"]
+	for bond in newBonds: newConfig.insert_bond(bond)
+	for angle in newAngles: newConfig.insert_angle(angle)
+	for dihedral in newDihedrals: newConfig.insert_dihedral(dihedral)
+	return newConfig	 
+
+
+def select_chains(config, chainList):
+	return selectByAtomFields(config, { "mol_id" : chainList })
+
 
 def select_rectangular(config, cutx = False, xrelmin = 0., xrelmax = 1., cuty = False, yrelmin = 0., yrelmax = 1., cutz = False, zrelmin = 0., zrelmax = 1.):
-	new_config = Config()
-	atoms = config.atoms()
-	bonds = config.bonds()
-	angles = config.angles()
-	dihedrals = config.dihedrals()
-	#Set box
-	new_config.set_box(config.box())
-	new_config.set_box_center(config.box_center())
-	#For every atom check .mol Insert the atoms with the proper .mol
-	#Make list of valid atom .nums
-	atom_numbers = []
-	for atom in atoms:
+	"""
+	Create new configuration with atoms contained in the rectangular subcell. The coordinates are specified relative to the original cell.
+
+	The bonds, angles and dihedrals with all atoms contained in the new subcell are also included to the new configuration.
+	"""
+	newConfig = Config()
+	newConfig.set_box(config.box())
+	newConfig.set_box_center(config.box_center())
+	for atom in config.atoms():
 		xrel = atom.pos.x / config.box().x
 		yrel = atom.pos.y / config.box().y
 		zrel = atom.pos.z / config.box().z
 		if ( cutx == False or (xrel >= xrelmin and xrel <= xrelmax)) and ( cuty == False or (yrel >= yrelmin and yrel <= yrelmax)) and (cutz == False or (zrel >= zrelmin and zrel <= zrelmax)):
-			new_config.insert_atom(atom)
-			atom_numbers.append(atom.num)
-	#Check every bond, angle and dihedral across the list
-	for bond in bonds:
-		try:
-			atom_numbers.index(bond.atom1.num)
-			atom_numbers.index(bond.atom2.num)
-			new_config.insert_bond(bond)
-		except ValueError: pass
-	for angle in angles:
-		try:
-			atom_numbers.index(angle.atom1.num)
-			atom_numbers.index(angle.atom2.num)
-			atom_numbers.index(angle.atom3.num)
-			new_config.insert_angle(angle)
-		except ValueError: pass
-	for dihedral in dihedrals:
-		try:
-			atom_numbers.index(dihedral.atom1.num)
-			atom_numbers.index(dihedral.atom2.num)
-			atom_numbers.index(dihedral.atom3.num)
-			atom_numbers.index(dihedral.atom4.num)
-			new_config.insert_dihedral(dihedral)
-		except ValueError: pass
-	return new_config
+			newConfig.insert_atom(atom)
+	newConstraints = selectConstraintsByAtom(config, newConfig.atoms())
+	newBonds, newAngles, newDihedrals = newConstraints["bonds"], newConstraints["angles"], newConstraints["dihedrals"]
+	for bond in newBonds: newConfig.insert_bond(bond)
+	for angle in newAngles: newConfig.insert_angle(angle)
+	for dihedral in newDihedrals: newConfig.insert_dihedral(dihedral)
+	return newConfig
 
 
 def GetMoleculeAtomlists(config, atom_types=["All"]):
