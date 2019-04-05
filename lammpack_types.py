@@ -37,13 +37,13 @@ class Atom:
 			field = "HETATM"
 		else:
 			field = "ATOM  "
-		return "%6s%5s %4s %3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f" \
+		return "%6s%5s %4s %4s%1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f         %2s%2s" \
             % (field, self.num, 
                pad_atom_type(self.type),
                self.res_type, self.mol_id[:1],
                self.res_num, self.res_insert,
                self.pos.x, self.pos.y, self.pos.z,
-               self.occupancy, self.bfactor)
+               self.occupancy, self.bfactor, "  ", "  ")
                
 	def __str__(self):
 		return "%s%s-%s (% .1f % .1f % .1f)" \
@@ -226,11 +226,12 @@ class Config:
 				for bond in bonds:
 					self.insert_bond(bond)
 			if line.startswith("ENDMDL"):
-				#return
 				continue
 			if line.startswith("CRYST1"):
 				box = BoxFromPdbLine(line)
 				self.set_box(box)
+			if line.startswith("TITLE"):
+				self.title = line[10:]
 		if assignMolecules["cluster"]:
 			for atom in self._atoms:
 				if atom.mol_id == "" or atom.mol_id == " ":
@@ -240,10 +241,16 @@ class Config:
 	def write_pdb(self, pdb, hide_pbc_bonds = False):
 		f = open(pdb, 'w')
 		n_atom = 0
+		f.write("TITLE     " + self.title)
+		f.write("%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f\n" \
+            % ("CRYST1", self.box().x, self.box().y, self.box().z, 90., 90., 90.))
+		f.write("MODEL     %4i\n" % (1))
 		for atom in sorted(self._atoms, cmp=cmp_atom):
 			n_atom += 1
 			atom.num = n_atom
 			f.write(atom.pdb_str() + '\n')
+		f.write("TER\n")
+		f.write("ENDMDL\n")
 		for bond in sorted(self._bonds, cmp=cmp_bond):
 			visible= True
 			if hide_pbc_bonds:

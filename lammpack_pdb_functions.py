@@ -17,7 +17,7 @@ def AtomFromPdbLine(line, inum = 0, assignMolecules = { "type" : "chainId", "clu
 		if not c.isdigit() and c != " ":
 			element += c
 	atom.element = element[0]
-	atom.res_type = line[17:20]
+	atom.res_type = line[17:21]
 	if assignMolecules["type"] == "chainId":
 		atom.mol_id = line[21]
 	elif assignMolecules["type"] == "resSeq":
