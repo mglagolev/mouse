@@ -49,15 +49,17 @@ def read_data_typeselect( filename, ftype=None, options = {} ):
 		ftype = determine_data_type( filename )
 	readfunc = {'lammps_dump':1, 'lammps_data':2, 'pdb':3, 'gro':4}
 	if ftype in readfunc:
+		try: options = options[ftype]
+		except KeyError: options = {}
 		config = Config()
 		if ftype == 'lammps_dump':
-			config.read_lmp_dump(filename, **options[ftype])
+			config.read_lmp_dump(filename, **options)
 		elif ftype == 'lammps_data':
-			config.read_lmp_data(filename, **options[ftype])
+			config.read_lmp_data(filename, **options)
 		elif ftype == 'pdb':
-			config.read_pdb(filename, **options[ftype])
+			config.read_pdb(filename, **options)
 		elif ftype == 'gro':
-			config.read_gro(filename, **options[ftype])
+			config.read_gro(filename, **options)
 		return config
 	else:
 		error_str = "No handler function for file type " + ftype
