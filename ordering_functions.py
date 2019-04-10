@@ -39,10 +39,7 @@ def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 
 		for j in range(i,len(types)):
 			pair_string = str(types[i]) + '_' + str(types[j])
 			rdfdata[pair_string] = [0] * nbin
-			if types[i] == types[j]:
-				norm[pair_string] = 1. / 2. * atom_counter[types[i]] * atom_counter[types[j]] / (config.box().x * config.box().y * config.box().z)
-			else:
-				norm[pair_string] = atom_counter[types[i]] * atom_counter[types[j]] / (config.box().x * config.box().y * config.box().z)
+			norm[pair_string] = 0
 	rdfs['norm'] = norm
 	for i in range(len(atoms)):
 		for j in range(i+1, len(atoms)):
@@ -55,11 +52,14 @@ def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 
 					pair_types = [type1, type2]
 					pair_types.sort()
 					pair_string = str(pair_types[0]) + '_' + str(pair_types[1])
+					rdfs['norm'][pair_string] += 1
 					dist = vector_pbc_trim(atoms[i].pos - atoms[j].pos, config.box()).length()
 					ihist = int( nbin * (dist - rmin) / (rmax - rmin))
 					if ihist >= 0 and ihist < nbin:
 						rdfdata[pair_string][ihist] += 1
 	rdfs['data'] = rdfdata
+	for pair_string in rdfs['norm']:
+		rdfs['norm'][pair_string] = float(rdfs['norm'][pair_string]) / config.box().x / config.box().y / config.box().z
 	return rdfs
 
 def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., mode = 'average', smin = -0.5, smax = 1.5, sbins = 75):
