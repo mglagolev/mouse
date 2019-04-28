@@ -5,7 +5,7 @@ from lammpack_types import *
 import vector3d
 import numpy as np
 import sys
-
+import pdb
 
 def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 0., nbin = 100, sameMolecule = True):
 	if rmax <= 0.:
@@ -71,8 +71,7 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 	if rmax == 0.:
 		rmax = config.box().length()/2.
 	if mode == 'histo':
-		s_histo = [0.] * sbins
-		i_s_histo = 0
+		s_hist = createHistogram(smin, smax, sbins)
 	for bond in config.bonds():
 		try:
 			bondtypes.index(bond.type)
@@ -80,8 +79,8 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 		except: pass
 	for i in range(len(bondlist)):
 		for j in range(i+1, len(bondlist)):
-			b1, r1 = config.bond_vector(bondlist[i])
-			b2, r2 = config.bond_vector(bondlist[j])
+			b1, r1 = config.bond_vector_by_num(bondlist[i])
+			b2, r2 = config.bond_vector_by_num(bondlist[j])
 			d = vector3d.Vector3d()
 			d = r2.__sub__(r1)
 			d.x = d.x - config.box().x * int(round(d.x / config.box().x))
@@ -96,11 +95,7 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 								cos_sq += cos_sq_value
 								i_s += 1
 							elif mode == 'histo':
-								s_index = int(sbins * ((1.5 * cos_sq_value - 0.5 ) - smin) / (smax - smin))
-								try:
-									s_histo[s_index] += 1
-									i_s_histo += 1
-								except: pass
+								updateHist(1.5 * cos_sq_value - 0.5, s_hist)
 			progress += 1
 			if progress % 1000 == 0:
 				sys.stderr.write("\r"+str(progress)+" "+str((1.5 * cos_sq)/float(i_s)-0.5)+" "+str(i_s))
@@ -109,37 +104,66 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 			s = 1.5 * cos_sq / i_s - 0.5
 		return s
 	elif mode == 'histo':
-		if i_s_histo > 0:
-			for i in range(sbins):
-				s_histo[i] /= i_s_histo
-	 	return s_histo
+		normHistogram(s_hist)
+	 	return s_hist
 
-def CalculateCrystallinityParameter(config, bondtypes, reference_vector=vector3d.Vector3d(0. ,0. ,0. )):
-	s = 0.
-	i_s = 0
+def CalculateCrystallinityParameter(config, bondtypes, reference_vector=vector3d.Vector3d(0. ,0. ,0. ), storeAsAtomtypes = False, mode = 'average', smin = -0.5, smax = 1.0, sbins = 75 ):
+	if mode == 'average':
+		s = 0.
+		i_s = 0
+	elif mode == 'histo':
+		s_hist = createHistogram(smin, smax, sbins)
+		s_hist_norm_total = 0.
+		for i in range(sbins):
+			sleft, sright = smin + i * s_hist["step"], smin + (i + 1) * s_hist["step"]
+			costhetaleft, costhetaright = (2./3. * (sleft + 0.5))**0.5, (2./3. * (sright + 0.5))**0.5
+			s_hist["norm"][i] = 1. / (costhetaleft + costhetaright)
 	progress = 0
 	bondlist = []
+	if storeAsAtomtypes:
+		atomOrderingList = []
 	for bond in config.bonds():
+		if bondtypes is None: bondlist.append(bond.num)
 		try:
 			bondtypes.index(bond.type)
 			bondlist.append(bond.num)
 		except: pass
-	if reference_vector.length_sq == 0.:
+	if reference_vector.length_sq() == 0.:
 		ave_b = vector3d.Vector3d()
 		i_b = 0
 		for i in range(len(bondlist)):
-			b1, r1 = config.bond_vector(bondlist[i])
-			ave_b += b1
+			b1, r1 = config.bond_vector_by_num(bondlist[i])
+			ave_b = ave_b + b1
 			i_b += 1
 		if i_b > 0:
 			ave_b.scale(1./float(i_b))
 	else:
 		ave_b = reference_vector
 	for i in range(len(bondlist)):
-		b1, r1 = config.bond_vector(bondlist[i])
+		b1, r1 = config.bond_vector_by_num(bondlist[i])
 		s_value = 1.5 * (b1.x*ave_b.x+b1.y*ave_b.y+b1.z*ave_b.z)**2/b1.length_sq()/ave_b.length_sq() - 0.5
-		s += s_value
-		i_s += 1
-	if i_s > 0:
-		s /= i_s
-	return s
+		if storeAsAtomtypes:
+			bondAtomNums = [config.bond_by_num(bondlist[i]).atom1.num, config.bond_by_num(bondlist[i]).atom2.num]
+			for atomNum in bondAtomNums:
+				try:
+					atomOrderingList[[x["num"] for x in atomOrderingList].index(atomNum)]["values"].append(s_value)
+				except ValueError:
+					atomOrderingList.append({ "num" : atomNum, "values" : [s_value] })
+		if mode == 'average':
+			s += s_value
+			i_s += 1
+		elif mode == 'histo':
+			updateHistogram(s_value, s_hist)
+	if storeAsAtomtypes:
+		for atomCryst in atomOrderingList:
+			atom = config.atom_by_num(atomCryst["num"])
+			atomCrystallinity = np.mean(atomCryst["values"])
+			if atomCrystallinity >= 0.: atom.type = "C" + "%02d" % int(atomCrystallinity * 100)
+			else: atom.type = "Cm" + "%02d" % int(atomCrystallinity * -100)
+	if mode == 'average':
+		if i_s > 0:
+			s /= i_s
+			return s
+	elif mode == 'histo':
+		normHistogram(s_hist, normInternalNorm = True)
+		return s_hist
