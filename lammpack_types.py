@@ -160,6 +160,9 @@ class Config:
 	def bond(self, i):
 		return self._bonds[i]
 
+	def bond_by_num(self, i):
+		return self._bonds[[ x.num for x in self._bonds ].index(i)]
+
 	def angles(self):
 		return self._angles
 
@@ -330,7 +333,7 @@ class Config:
 						continue
 		f.close()
 
-	def bond_vector(self, bond_num):
+	def bond_vector_by_num(self, bond_num):
 		bond = next((x for x in self._bonds if x.num == bond_num), None)
 		return self.interatom_vector(bond.atom1.num, bond.atom2.num)
 
