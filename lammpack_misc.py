@@ -180,4 +180,39 @@ def GetMoleculeAtomlists(config, atom_types=["All"]):
 			molecules_atoms.append([atom.num])
 	return molecules_index, molecules_atoms
 
+def createHistogram(minvalue, maxvalue, nbins):
+	if isinstance(nbins, (int, long)):
+		if nbins > 1:	step = (maxvalue - minvalue) / ( nbins - 1)
+		elif nbins == 1: step = maxvalue - minvalue
+		else: raise NameError("Invalid number of bins in the histogram (" + str(nbins) + ")")
+	else: raise NameError("Number of bins (" + str(nbins) + ") in the histogram must be integer")
+	return { "min" : minvalue, "max" : maxvalue, "nbins" : nbins, "step" : step, "values" : [0.] * nbins, "norm" : [0.] * nbins }
 
+def updateHistogram(value, histogram):
+	ibin = int(len(histogram["values"]) * (value - histogram["min"]) / (histogram["max"] - histogram["min"]))
+	try:
+		histogram["values"][ibin] += 1
+	except KeyError: pass
+
+def normHistogram(histogram, normInternalNorm = False):
+	histsum = 0.
+	if normInternalNorm: histNormSum = 0.
+	for i in range(len(histogram["values")):
+		histsum += histogram["values"][i]
+		if normInternalNorm: histNormSum += histogram["norm"][i]
+	if histsum > 0.:
+		for i in range(len(histogram["values"])):
+			histogram["values"][i] /= histsum
+	if normInternalNorm:
+		if histNormSum > 0:
+			for i in range(len(histogram["values"])):
+				histogram["norm"][i] /= histNormSum
+
+def printHistogram(histogram, norm = False):
+	s = ''
+	for i in range(histogram["nbins"]):
+		x = histogram["min"] + histogram["step"] * i
+		value = histogram["values"][i]
+		if norm: value /= histogram["norm"][i]
+		s += str(x) + "\t" + str(value) + "\n"
+	return s
