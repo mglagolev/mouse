@@ -41,8 +41,8 @@ def CalculateBackboneCorrelations(config, bond_types, k_max = None):
 			else:
 				k_end = nbonds_min
 			for k in range(j+1, k_end):
-				bond1_vector, _ = config.bond_vector_by_num(bonds[j].num)
-				bond2_vector, _ = config.bond_vector_by_num(bonds[k].num)
+				bond1_vector, _ = config.bond_vector(bonds[j].num)
+				bond2_vector, _ = config.bond_vector(bonds[k].num)
 				bond1_vector_std = [bond1_vector.x, bond1_vector.y, bond1_vector.z]
 				bond2_vector_std = [bond2_vector.x, bond2_vector.y, bond2_vector.z]
 				ck_sum[k-j] += numpy.dot(bond1_vector_std, bond2_vector_std)/numpy.linalg.norm(bond1_vector_std)/numpy.linalg.norm(bond2_vector_std)
