@@ -197,7 +197,7 @@ def updateHistogram(value, histogram):
 def normHistogram(histogram, normInternalNorm = False):
 	histsum = 0.
 	if normInternalNorm: histNormSum = 0.
-	for i in range(len(histogram["values")):
+	for i in range(len(histogram["values"])):
 		histsum += histogram["values"][i]
 		if normInternalNorm: histNormSum += histogram["norm"][i]
 	if histsum > 0.:
