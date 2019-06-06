@@ -6,7 +6,7 @@ import argparse
 from lammpack_types import Config
 from ordering_functions import *
 
-def printRdfs(rdfs):
+def printRdfs(rdfs, norm = True):
 	nlines = len(rdfs['r'])
 	sys.stdout.write("#r	vol")
 	orderedKeys = []
@@ -21,7 +21,10 @@ def printRdfs(rdfs):
 		sys.stdout.write(str(r))
 		sys.stdout.write("	" + str(v))
 		for key in orderedKeys:
-			sys.stdout.write("	" + str(rdfs['data'][key][nline] / rdfs['norm'][key] / v ))
+			if norm:
+				sys.stdout.write("	" + str(rdfs['data'][key][nline] / rdfs['norm'][key] / v ))
+			else:
+				sys.stdout.write("	" + str(rdfs['data'][key][nline] ))
 		sys.stdout.write("\n")
 
 parser = argparse.ArgumentParser(description = 'Calculate radial distribution functions')
@@ -40,6 +43,8 @@ parser.add_argument('--chains', type = str, nargs = '+', help = 'chain numbers f
 
 parser.add_argument('--same-molecule', action = 'store_true', help = 'calculate for atoms in the same molecule')
 
+parser.add_argument('--no-norm', action = 'store_false', help = 'do not normalize the distributions')
+
 args = parser.parse_args()
 
 print >> sys.stderr, '\r',
@@ -52,6 +57,5 @@ try:
 except TypeError:
 	rdfs = CalculatePairCorrelationFunctions(frame, args.atomtypes, args.rmin, args.rmax, args.nbin, args.same_molecule)
 
-printRdfs(rdfs)
-
+printRdfs(rdfs, args.no_norm)
 
