@@ -188,10 +188,10 @@ def createHistogram(minvalue, maxvalue, nbins):
 	else: raise NameError("Number of bins (" + str(nbins) + ") in the histogram must be integer")
 	return { "min" : minvalue, "max" : maxvalue, "nbins" : nbins, "step" : step, "values" : [0.] * nbins, "norm" : [0.] * nbins }
 
-def updateHistogram(value, histogram):
+def updateHistogram(value, histogram, weight = 1):
 	ibin = int(len(histogram["values"]) * (value - histogram["min"]) / (histogram["max"] - histogram["min"]))
 	try:
-		histogram["values"][ibin] += 1
+		histogram["values"][ibin] += weight
 	except KeyError: pass
 
 def normHistogram(histogram, normInternalNorm = False):
