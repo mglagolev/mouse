@@ -28,18 +28,24 @@ parser.add_argument('--histo-bins', type = int, nargs = '?', help = 'number of b
 
 parser.add_argument('--subcell', type = float, nargs = '+', help = 'rectangular subcell boundaries, normalized')
 
+parser.add_argument('--reference-residue', type = str, nargs = '+', help = 'residue types of atoms for bonds used as reference')
+
+parser.add_argument('--same-molecule', action = 'store_true', help = 'take into accounts bond in the same molecule')
+
 args = parser.parse_args()
 
 for in_data in args.frames:
 	print >> sys.stderr, '\r',
-	frame = read_data_typeselect(in_data)
-	sys.stderr.write('Frame natom: '+str(frame.n_atom())+'\n')
+	if not args.same_molecule: readOptions = {'pdb' : { 'assignMolecules' : {'type' : 'resSeq', 'cluster' : True } } }
+	else: readOptions = {}
+	frame = read_data_typeselect(in_data, options = readOptions)
+	sys.stderr.write('Read frame (natom): '+str(frame.n_atom())+'\n')
 	try:
 		if len(args.chains) > 0:
 			frame = select_chains(frame, args.chains)
 	except TypeError:
 		pass
-	sys.stderr.write('Frame natom: '+str(frame.n_atom())+'\n')
+	sys.stderr.write('After molecules selection: '+str(frame.n_atom())+'\n')
 	xrelmin, xrelmax, yrelmin, yrelmax, zrelmin, zrelmax = 0., 1., 0., 1., 0., 1.
 	cutx, cuty, cutz = False, False, False
 	try:
@@ -55,12 +61,8 @@ for in_data in args.frames:
 	except:
 		pass
 	frame = select_rectangular(frame, cutx, xrelmin, xrelmax, cuty, yrelmin, yrelmax, cutz, zrelmin, zrelmax)
-	sys.stderr.write('Frame natom: '+str(frame.n_atom())+'\n')
-	s = CalculateOrientationOrderParameter(frame, args.bondtypes, args.min, args.max, args.mode, args.histo_min, args.histo_max, args.histo_bins)
-	if args.mode == 'average':
-		print s
-	elif args.mode == 'histo':
-		for i in range(len(s)):
-			print args.histo_min + (args.histo_max - args.histo_min) * (i + 0.5) / args.histo_bins,
-			print s[i]
+	sys.stderr.write('After region selection: '+str(frame.n_atom())+'\n')
+	s = CalculateOrientationOrderParameter(frame, args.bondtypes, args.min, args.max, args.mode, args.histo_min, args.histo_max, args.histo_bins, referenceResTypes = args.reference_residue, sameMolecule = args.same_molecule)
+	if args.mode == 'average': print s
+	elif args.mode == 'histo': sys.stdout.write(printHistogram(s, norm = False))
 		
