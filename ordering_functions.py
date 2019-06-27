@@ -7,8 +7,113 @@ import numpy as np
 import sys
 import pdb
 
+def hash8(s):
+	return abs(hash(s)) % (10 ** 8)
+
+
+def createNumpyBondsArrayFromConfig(config, allowedBondTypes = [], allowedResTypes = [], allowedMolIds = [], allowedBondNums = []):
+	"""Create numpy 2d array, containing subarrays with bond numbers, bond vector coordinates, and bond center coordinates.
+	   If the allowed bond types, res_types, mol_ids or numbers are specified, those should be in the corresponding lists.
+	   The properties of the atoms should be in the lists for both of the atoms.
+	   Returns: np.array((bond numbers, molecule ids, bond vector x, bond vector y, bond vector z,
+	   bond center x, bond center y, bond center z))"""
+	resTypesStr, molIdsStr = [], []
+	bondNums, resTypes, molIds = [], [], []
+	bx, by, bz = [], [], []
+	rx, ry, rz = [], [], []
+	for bond in config.bonds():
+		if ( allowedBondTypes is None or bond.type in allowedBondTypes or len(allowedBondTypes) == 0 ) and ( allowedResTypes is None or ( bond.atom1.res_type in allowedResTypes and bond.atom2.res_type in allowedResTypes ) or len(allowedResTypes) == 0 ) and ( allowedMolIds is None or ( bond.atom1.mol_id in allowedMolIds and bond.atom2.mol_id in allowedMolIds ) or len(allowedMolIds) == 0 ) and ( allowedBondNums is None or bond.num in allowedBondNums or len(allowedBondNums) == 0):
+			b, r = config.bond_vector_by_num(bond.num)
+			bondNums.append(bond.num)
+			resTypesStr.append(bond.atom1.res_type)
+			molIdsStr.append(bond.atom1.mol_id)
+			bx.append(b.x)
+			by.append(b.y)
+			bz.append(b.z)
+			rx.append(r.x)
+			ry.append(r.y)
+			rz.append(r.z)
+	resTypes = map(hash8, resTypesStr)
+	molIds = map(hash8, molIdsStr)
+	return np.array((bondNums, resTypes, molIds, bx, by, bz, rx, ry, rz))
+
+
+def createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [], allowedResTypes = [], allowedMolIds = [], allowedAtomNums = []):
+	"""Create numpy 2d array, containing subarrays with atom numbers and atom coordinates.
+	   Returns: np.array((atom numbers, atom res_types, atom mol_ids, atom coords x, atom coords y, atom coords z))"""
+	resTypesStr, molIdsStr = [], []
+	atomNums, resTypes, molIds = [], [], []
+	x, y, z = [], [], []
+	for atom in config.atoms():
+		if ( atom.type in allowedAtomTypes or len(allowedAtomTypes) == 0 ) and ( atom.res_type in allowedResTypes or len(allowedResTypes) == 0 ) and (atom.mol_id in allowedMolIds or len(allowedmolIds) == 0) and (atom.num in allowedAtomNums or len(allowedAtomNums) == 0):
+			atomNums.append(atom.num)
+			resTypesStr.append(atom.res_type)
+			molIdsStr.append(atom.mol_id)
+			x.append(atom.pos.x)
+			y.append(atom.pos.y)
+			z.append(atom.pos.z)
+	resTypes = map(hash8, resTypesStr)
+	molIds = map(hash8, molIdsStr)
+	return np.array((atomNums, resTypes, molIds, x, y, z))
+
+
+def calculateRdfForReference(config, refAtom, npAtoms, rmin = 0., rmax = -1., nbin = 100, excludeSelf = True, sameMolecule = True):
+	"""Returns numpy histogram for distribution of distance between the atom positions in npAtoms array and the reference atom refAtom."""
+	if rmax < 0.: rmax = min(config.box().x, config.box().y, config.box().z) / 2.
+	drx = npAtoms[3] - refAtom.pos.x
+	dry = npAtoms[4] - refAtom.pos.y
+	drz = npAtoms[5] - refAtom.pos.z
+	drxTrim = drx - config.box().x * np.around(drx / config.box().x)
+	dryTrim = dry - config.box().y * np.around(dry / config.box().y)
+	drzTrim = drz - config.box().z * np.around(drz / config.box().z)
+	if excludeSelf: notSelf = npAtoms[0] != refAtom.num
+	else: notSelf = 1.
+	if not sameMolecule:
+		emptyMolId = npAtoms[2] == hash8('')
+		if np.sum(emptyMolId) > 0:
+			raise NameError("We should omit the atoms belonging to the same molecules, but some mol_ids are empty")
+		notSameMolecule = npAtoms[2] != hash8(refAtom.mol_id)
+	else: notSameMolecule = 1.
+	drTrim = notSelf * notSameMolecule * np.sqrt(drxTrim**2 + dryTrim**2 + drzTrim**2)
+	drTrimMasked = np.ma.masked_equal(drTrim, 0.)
+	if drTrimMasked.count() > 0:
+		return np.histogram(drTrimMasked, bins = nbin, range = (rmin, rmax))
+	else:
+		raise NameError("No values to calculate")
+
+
+def calculateAveCosSqForReference(config, refBond, npBonds, rcut, excludeSelf = True, sameMolecule = True):
+	bxRef = refBond.atom2.pos.x - refBond.atom1.pos.x
+	byRef = refBond.atom2.pos.y - refBond.atom1.pos.y
+	bzRef = refBond.atom2.pos.z - refBond.atom1.pos.z
+	bx, by, bz = npBonds[3], npBonds[4], npBonds[5]
+	drx = npBonds[6] - float(( refBond.atom1.pos.x + refBond.atom2.pos.x) / 2.)
+	dry = npBonds[7] - float(( refBond.atom1.pos.y + refBond.atom2.pos.y) / 2.)
+	drz = npBonds[8] - float(( refBond.atom1.pos.z + refBond.atom2.pos.z) / 2.)
+	drxTrim = drx - config.box().x * np.around(drx / config.box().x)
+	dryTrim = dry - config.box().y * np.around(dry / config.box().y)
+	drzTrim = drz - config.box().z * np.around(drz / config.box().z)
+	rsq = drxTrim**2 + dryTrim**2 + drzTrim**2
+	if rcut >= 0.: inRange = rsq <= rcut**2
+	else: inRange = 1.
+	if excludeSelf: notSelf = npBonds[0] != refBond.num
+	else: notSelf = 1.
+	if not sameMolecule:
+		emptyMolId = npBonds[2] == hash8('')
+		if np.sum(emptyMolId) > 0:
+			raise NameError("We should omit the atoms belonging to the same molecules, but some mol_ids are empty")
+		notSameMolecule = npBonds[2] != hash8(refBond.atom1.mol_id)
+	else: notSameMolecule = 1.
+	cosSqNormed = inRange * notSelf * notSameMolecule * ( bxRef * bx + byRef * by + bzRef * bz )**2 / ( bxRef**2 + byRef**2 + bzRef**2 ) / ( bx**2 + by**2 + bz**2)
+	cosSqNormedMasked = np.ma.masked_equal(cosSqNormed, 0.)
+	if cosSqNormedMasked.count() > 0:
+		return np.ma.average(cosSqNormedMasked)
+	else:
+		raise NameError("No values to calculate")
+
+
 def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 0., nbin = 100, sameMolecule = True):
-	if rmax <= 0.:
+	if rmax < 0.:
 		rmax = min(config.box().x, config.box().y, config.box().z) / 2.
 	types = []
 	atoms = config.atoms()
@@ -37,68 +142,55 @@ def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 
 	norm = {}
 	for i in range(len(types)):
 		for j in range(i,len(types)):
-			pair_string = str(types[i]) + '_' + str(types[j])
-			rdfdata[pair_string] = [0] * nbin
+			pair_string = str(types[i]) + '_' + str(types[j])	
+			rdfdata[pair_string] = np.ndarray((nbin))
 			norm[pair_string] = 0
-	rdfs['norm'] = norm
-	for i in range(len(atoms)):
-		for j in range(i+1, len(atoms)):
-			type1 = atoms[i].type
-			type2 = atoms[j].type
-			if (type1 in types) and (type2 in types):
-				mol1 = atoms[i].mol_id
-				mol2 = atoms[j].mol_id
-				if sameMolecule or (mol1 != mol2):
-					pair_types = [type1, type2]
-					pair_types.sort()
-					pair_string = str(pair_types[0]) + '_' + str(pair_types[1])
-					rdfs['norm'][pair_string] += 1
-					dist = vector_pbc_trim(atoms[i].pos - atoms[j].pos, config.box()).length()
-					ihist = int( nbin * (dist - rmin) / (rmax - rmin))
-					if ihist >= 0 and ihist < nbin:
-						rdfdata[pair_string][ihist] += 1
 	rdfs['data'] = rdfdata
+	rdfs['norm'] = norm
+	npAtomsByType = {}
+	for atype in types:
+		npAtomsByType[atype] = createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [atype])
+	for atom in atoms:
+		type1 = atom.type
+		for type2 in types:
+			pair_types = [type1, type2]
+			pair_types.sort()
+			pair_string = str(pair_types[0]) + '_' + str(pair_types[1])
+			try:
+				rdf = calculateRdfForReference(config, atom, npAtomsByType[type2], rmin = rmin, rmax = rmax, nbin = nbin, sameMolecule = sameMolecule)
+				rdfs['data'][pair_string] += rdf[0]
+				rdfs['norm'][pair_string] += np.sum(rdf[0])
+			except NameError: pass
 	for pair_string in rdfs['norm']:
-		rdfs['norm'][pair_string] = float(rdfs['norm'][pair_string]) / config.box().x / config.box().y / config.box().z
+		rdfs['norm'][pair_string] = float(rdfs['norm'][pair_string]) / 2. / config.box().x / config.box().y / config.box().z
 	return rdfs
 
-def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., mode = 'average', smin = -0.5, smax = 1.5, sbins = 75):
+
+def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., mode = 'average', smin = -0.5, smax = 1.0, sbins = 75, referenceResTypes = [], sameMolecule = True):
 	nbonds = config.n_bond()
-	cos_sq = 0.	
+	cos_sq = 0.
 	i_s = 0
 	progress = 0
-	bondlist = []
 	if rmax == 0.:
 		rmax = config.box().length()/2.
 	if mode == 'histo':
 		s_hist = createHistogram(smin, smax, sbins)
+		s_hist_norm_total = 0.
+		for i in range(sbins):
+			sleft, sright = smin + i * s_hist["step"], smin + (i + 1) * s_hist["step"]
+			costhetaleft, costhetaright = (2./3. * (sleft + 0.5))**0.5, (2./3. * (sright + 0.5))**0.5
+			s_hist["norm"][i] = 1. / (costhetaleft + costhetaright)
+	npBonds = createNumpyBondsArrayFromConfig(config, allowedBondTypes = bondtypes)
 	for bond in config.bonds():
-		try:
-			bondtypes.index(bond.type)
-			bondlist.append(bond.num)
-		except: pass
-	for i in range(len(bondlist)):
-		for j in range(i+1, len(bondlist)):
-			b1, r1 = config.bond_vector_by_num(bondlist[i])
-			b2, r2 = config.bond_vector_by_num(bondlist[j])
-			d = vector3d.Vector3d()
-			d = r2.__sub__(r1)
-			d.x = d.x - config.box().x * int(round(d.x / config.box().x))
-			if abs(d.x) <= rmax:
-				d.y = d.y - config.box().y * int(round(d.y / config.box().y))
-				if abs(d.y) <= rmax:
-					d.z = d.z - config.box().z * int(round(d.z / config.box().z))
-					if abs(d.z) <= rmax:
-						if d.length() <= rmax and d.length > rmin:
-							cos_sq_value = (b1.x*b2.x+b1.y*b2.y+b1.z*b2.z)**2/b1.length_sq()/b2.length_sq()
-							if mode == 'average':
-								cos_sq += cos_sq_value
-								i_s += 1
-							elif mode == 'histo':
-								updateHist(1.5 * cos_sq_value - 0.5, s_hist)
-			progress += 1
-			if progress % 1000 == 0:
-				sys.stderr.write("\r"+str(progress)+" "+str((1.5 * cos_sq)/float(i_s)-0.5)+" "+str(i_s))
+		if referenceResTypes is None or bond.atom1.res_type in referenceResTypes or len(referenceResTypes) == 0:
+			try:
+				cosSq = calculateAveCosSqForReference(config, bond, npBonds, rmax, sameMolecule = sameMolecule)
+				if mode == 'histo':
+					updateHistogram(1.5 * cosSq - 0.5, s_hist)
+				elif mode == 'average':
+					cos_sq += cosSq
+					i_s += 1
+			except NameError: pass
 	if mode == 'average':
 		if i_s > 0:
 			s = 1.5 * cos_sq / i_s - 0.5
@@ -107,11 +199,9 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 		normHistogram(s_hist)
 	 	return s_hist
 
+
 def CalculateCrystallinityParameter(config, bondtypes, reference_vector=vector3d.Vector3d(0. ,0. ,0. ), storeAsAtomtypes = False, mode = 'average', smin = -0.5, smax = 1.0, sbins = 75 ):
-	if mode == 'average':
-		s = 0.
-		i_s = 0
-	elif mode == 'histo':
+	if mode == 'histo':
 		s_hist = createHistogram(smin, smax, sbins)
 		s_hist_norm_total = 0.
 		for i in range(sbins):
@@ -123,11 +213,7 @@ def CalculateCrystallinityParameter(config, bondtypes, reference_vector=vector3d
 	if storeAsAtomtypes:
 		atomOrderingList = []
 	for bond in config.bonds():
-		if bondtypes is None: bondlist.append(bond.num)
-		try:
-			bondtypes.index(bond.type)
-			bondlist.append(bond.num)
-		except: pass
+		if (bondtypes is None) or (bond.type in bondtypes): bondlist.append(bond.num)
 	if reference_vector.length_sq() == 0.:
 		ave_b = vector3d.Vector3d()
 		i_b = 0
@@ -139,31 +225,31 @@ def CalculateCrystallinityParameter(config, bondtypes, reference_vector=vector3d
 			ave_b.scale(1./float(i_b))
 	else:
 		ave_b = reference_vector
-	for i in range(len(bondlist)):
-		b1, r1 = config.bond_vector_by_num(bondlist[i])
-		s_value = 1.5 * (b1.x*ave_b.x+b1.y*ave_b.y+b1.z*ave_b.z)**2/b1.length_sq()/ave_b.length_sq() - 0.5
-		if storeAsAtomtypes:
-			bondAtomNums = [config.bond_by_num(bondlist[i]).atom1.num, config.bond_by_num(bondlist[i]).atom2.num]
-			for atomNum in bondAtomNums:
-				try:
-					atomOrderingList[[x["num"] for x in atomOrderingList].index(atomNum)]["values"].append(s_value)
-				except ValueError:
-					atomOrderingList.append({ "num" : atomNum, "values" : [s_value] })
-		if mode == 'average':
-			s += s_value
-			i_s += 1
-		elif mode == 'histo':
-			updateHistogram(s_value, s_hist)
-	if storeAsAtomtypes:
-		for atomCryst in atomOrderingList:
-			atom = config.atom_by_num(atomCryst["num"])
-			atomCrystallinity = np.mean(atomCryst["values"])
-			if atomCrystallinity >= 0.: atom.type = "C" + "%02d" % int(atomCrystallinity * 100)
-			else: atom.type = "Cm" + "%02d" % int(atomCrystallinity * -100)
 	if mode == 'average':
-		if i_s > 0:
-			s /= i_s
-			return s
+		npBonds = createNumpyBondsArrayFromConfig(config, bondtypes = bondtypes)
+		refBond = Bond()
+		refBond.atom1, refBond.atom2 = Atom(), Atom()
+		refBond.atom1.pos = vector3d.Vector3d(0., 0., 0.)
+		refBond.atom2.pos = ave_b
+		cosSq = calculateAveCosSqForReference(config, refBond, npBonds, -1.)
+		return 1.5 * cosSq - 0.5
 	elif mode == 'histo':
+		for i in range(len(bondlist)):
+			b1, r1 = config.bond_vector_by_num(bondlist[i])
+			s_value = 1.5 * (b1.x*ave_b.x+b1.y*ave_b.y+b1.z*ave_b.z)**2/b1.length_sq()/ave_b.length_sq() - 0.5
+			if storeAsAtomtypes:
+				bondAtomNums = [config.bond_by_num(bondlist[i]).atom1.num, config.bond_by_num(bondlist[i]).atom2.num]
+				for atomNum in bondAtomNums:
+					try:
+						atomOrderingList[[x["num"] for x in atomOrderingList].index(atomNum)]["values"].append(s_value)
+					except ValueError:
+						atomOrderingList.append({ "num" : atomNum, "values" : [s_value] })
+			updateHistogram(s_value, s_hist)
+		if storeAsAtomtypes:
+			for atomCryst in atomOrderingList:
+				atom = config.atom_by_num(atomCryst["num"])
+				atomCrystallinity = np.mean(atomCryst["values"])
+				if atomCrystallinity >= 0.: atom.type = "C" + "%02d" % int(atomCrystallinity * 100)
+				else: atom.type = "Cm" + "%02d" % int(atomCrystallinity * -100)
 		normHistogram(s_hist, normInternalNorm = True)
 		return s_hist
