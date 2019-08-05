@@ -45,7 +45,7 @@ def createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [], allowedResTyp
 	atomNums, resTypes, molIds = [], [], []
 	x, y, z = [], [], []
 	for atom in config.atoms():
-		if ( atom.type in allowedAtomTypes or len(allowedAtomTypes) == 0 ) and ( atom.res_type in allowedResTypes or len(allowedResTypes) == 0 ) and (atom.mol_id in allowedMolIds or len(allowedmolIds) == 0) and (atom.num in allowedAtomNums or len(allowedAtomNums) == 0):
+		if ( atom.type in allowedAtomTypes or len(allowedAtomTypes) == 0 ) and ( atom.res_type in allowedResTypes or len(allowedResTypes) == 0 ) and (atom.mol_id in allowedMolIds or len(allowedMolIds) == 0) and (atom.num in allowedAtomNums or len(allowedAtomNums) == 0):
 			atomNums.append(atom.num)
 			resTypesStr.append(atom.res_type)
 			molIdsStr.append(atom.mol_id)
@@ -152,15 +152,16 @@ def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 
 		npAtomsByType[atype] = createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [atype])
 	for atom in atoms:
 		type1 = atom.type
-		for type2 in types:
-			pair_types = [type1, type2]
-			pair_types.sort()
-			pair_string = str(pair_types[0]) + '_' + str(pair_types[1])
-			try:
-				rdf = calculateRdfForReference(config, atom, npAtomsByType[type2], rmin = rmin, rmax = rmax, nbin = nbin, sameMolecule = sameMolecule)
-				rdfs['data'][pair_string] += rdf[0]
-				rdfs['norm'][pair_string] += np.sum(rdf[0])
-			except NameError: pass
+		if type1 in types:
+			for type2 in types:
+				pair_types = [type1, type2]
+				pair_types.sort()
+				pair_string = str(pair_types[0]) + '_' + str(pair_types[1])
+				try:
+					rdf = calculateRdfForReference(config, atom, npAtomsByType[type2], rmin = rmin, rmax = rmax, nbin = nbin, sameMolecule = sameMolecule)
+					rdfs['data'][pair_string] += rdf[0]
+					rdfs['norm'][pair_string] += np.sum(rdf[0])
+				except NameError: pass
 	for pair_string in rdfs['norm']:
 		rdfs['norm'][pair_string] = float(rdfs['norm'][pair_string]) / 2. / config.box().x / config.box().y / config.box().z
 	return rdfs
@@ -226,7 +227,7 @@ def CalculateCrystallinityParameter(config, bondtypes, reference_vector=vector3d
 	else:
 		ave_b = reference_vector
 	if mode == 'average':
-		npBonds = createNumpyBondsArrayFromConfig(config, bondtypes = bondtypes)
+		npBonds = createNumpyBondsArrayFromConfig(config, allowedBondTypes = bondtypes)
 		refBond = Bond()
 		refBond.atom1, refBond.atom2 = Atom(), Atom()
 		refBond.atom1.pos = vector3d.Vector3d(0., 0., 0.)
