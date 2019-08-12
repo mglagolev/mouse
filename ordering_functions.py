@@ -77,7 +77,8 @@ def calculateRdfForReference(config, refAtom, npAtoms, rmin = 0., rmax = -1., nb
 	drTrim = notSelf * notSameMolecule * np.sqrt(drxTrim**2 + dryTrim**2 + drzTrim**2)
 	drTrimMasked = np.ma.masked_equal(drTrim, 0.)
 	if drTrimMasked.count() > 0:
-		return np.histogram(drTrimMasked, bins = nbin, range = (rmin, rmax))
+		#sys.stderr.write(str(np.histogram(drTrimMasked.compressed(), bins = nbin, range = (rmin, rmax))))
+		return np.histogram(drTrimMasked.compressed(), bins = nbin, range = (rmin, rmax))
 	else:
 		raise NameError("No values to calculate")
 
@@ -126,6 +127,8 @@ def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 
 			except ValueError:
 				types.append(atom.type)
 				atom_counter[atom.type] = 1
+	types.append('AAAAA')
+	atom_counter['AAAAA'] = 0
 	types.sort()
 	rdfs = {}
 	distances = []
@@ -159,15 +162,16 @@ def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 
 				pair_string = str(pair_types[0]) + '_' + str(pair_types[1])
 				try:
 					rdf = calculateRdfForReference(config, atom, npAtomsByType[type2], rmin = rmin, rmax = rmax, nbin = nbin, sameMolecule = sameMolecule)
-					rdfs['data'][pair_string] += rdf[0]
+					rdfs['data'][pair_string] = np.add(rdfs['data'][pair_string],rdf[0])
 					rdfs['norm'][pair_string] += np.sum(rdf[0])
 				except NameError: pass
 	for pair_string in rdfs['norm']:
 		rdfs['norm'][pair_string] = float(rdfs['norm'][pair_string]) / 2. / config.box().x / config.box().y / config.box().z
+	sys.stderr.write(str(rdfs))
 	return rdfs
 
 
-def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., mode = 'average', smin = -0.5, smax = 1.0, sbins = 75, referenceResTypes = [], sameMolecule = True):
+def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., storeAsAtomtypes = False, mode = 'average', smin = -0.5, smax = 1.0, sbins = 75, referenceResTypes = [], sameMolecule = True):
 	nbonds = config.n_bond()
 	cos_sq = 0.
 	i_s = 0
@@ -181,6 +185,8 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 			sleft, sright = smin + i * s_hist["step"], smin + (i + 1) * s_hist["step"]
 			costhetaleft, costhetaright = (2./3. * (sleft + 0.5))**0.5, (2./3. * (sright + 0.5))**0.5
 			s_hist["norm"][i] = 1. / (costhetaleft + costhetaright)
+	if storeAsAtomtypes:
+		atomOrderingList = []
 	npBonds = createNumpyBondsArrayFromConfig(config, allowedBondTypes = bondtypes)
 	for bond in config.bonds():
 		if referenceResTypes is None or bond.atom1.res_type in referenceResTypes or len(referenceResTypes) == 0:
@@ -191,7 +197,20 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 				elif mode == 'average':
 					cos_sq += cosSq
 					i_s += 1
+				if storeAsAtomtypes:
+					bondAtomNums = [bond.atom1.num, bond.atom2.num]
+					for atomNum in bondAtomNums:
+						try:
+							atomOrderingList[[x["num"] for x in atomOrderingList].index(atomNum)]["values"].append(1.5 * cosSq - 0.5)
+						except ValueError:
+							atomOrderingList.append({ "num" : atomNum, "values" : [1.5 * cosSq - 0.5] })
 			except NameError: pass
+	if storeAsAtomtypes:
+		for atomOrdering in atomOrderingList:
+			atom = config.atom_by_num(atomOrdering["num"])
+			atomOrderingMean = np.mean(atomOrdering["values"])
+			if atomOrderingMean >= 0.: atom.type = "C" + "%02d" % int(atomOrderingMean * 100)
+			else: atom.type = "Cm" + "%02d" % int(atomOrderingMean * -100)
 	if mode == 'average':
 		if i_s > 0:
 			s = 1.5 * cos_sq / i_s - 0.5
