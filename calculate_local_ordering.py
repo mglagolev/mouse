@@ -32,6 +32,8 @@ parser.add_argument('--reference-residue', type = str, nargs = '+', help = 'resi
 
 parser.add_argument('--same-molecule', action = 'store_true', help = 'take into accounts bond in the same molecule')
 
+parser.add_argument('--out-pdb', type = str, nargs = '*', help = "output .pdb with atom types encoding local ordering value, e.g. CXX, where XX is crystallinity value in %")
+
 args = parser.parse_args()
 
 for in_data in args.frames:
@@ -60,9 +62,15 @@ for in_data in args.frames:
 		cutz = True
 	except:
 		pass
+	try:
+		outPdb = args.out_pdb[0]
+		storeAsAtomtypes = True
+	except: storeAsAtomtypes = False
 	frame = select_rectangular(frame, cutx, xrelmin, xrelmax, cuty, yrelmin, yrelmax, cutz, zrelmin, zrelmax)
 	sys.stderr.write('After region selection: '+str(frame.n_atom())+'\n')
-	s = CalculateOrientationOrderParameter(frame, args.bondtypes, args.min, args.max, args.mode, args.histo_min, args.histo_max, args.histo_bins, referenceResTypes = args.reference_residue, sameMolecule = args.same_molecule)
+	s = CalculateOrientationOrderParameter(frame, args.bondtypes, args.min, args.max, mode = args.mode, storeAsAtomtypes = storeAsAtomtypes, smin = args.histo_min, smax = args.histo_max, sbins = args.histo_bins, referenceResTypes = args.reference_residue, sameMolecule = args.same_molecule)
+	if storeAsAtomtypes:
+		frame.write_pdb(outPdb, hide_pbc_bonds = True)
 	if args.mode == 'average': print s
 	elif args.mode == 'histo': sys.stdout.write(printHistogram(s, norm = False))
 		
