@@ -234,7 +234,7 @@ class Config:
 				box = BoxFromPdbLine(line)
 				self.set_box(box)
 			if line.startswith("TITLE"):
-				self.title = line[10:]
+				self.title = line[10:].rstrip()
 		if assignMolecules["cluster"]:
 			for atom in self._atoms:
 				if atom.mol_id == "" or atom.mol_id == " ":
@@ -244,7 +244,7 @@ class Config:
 	def write_pdb(self, pdb, hide_pbc_bonds = False):
 		f = open(pdb, 'w')
 		n_atom = 0
-		f.write("TITLE     " + self.title)
+		f.write("TITLE     " + self.title + "\n")
 		f.write("%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f\n" \
             % ("CRYST1", self.box().x, self.box().y, self.box().z, 90., 90., 90.))
 		f.write("MODEL     %4i\n" % (1))
