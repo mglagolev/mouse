@@ -16,7 +16,7 @@ def AtomFromPdbLine(line, inum = 0, assignMolecules = { "type" : "chainId", "clu
 	for c in line[12:16]:
 		if not c.isdigit() and c != " ":
 			element += c
-	atom.element = element[0]
+	if len(element) > 0: atom.element = element[0]
 	atom.res_type = line[17:21]
 	if assignMolecules["type"] == "chainId":
 		atom.mol_id = line[21]
