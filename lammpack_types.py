@@ -408,6 +408,12 @@ class Config:
 				bond.atom1.num, bond.atom2.num = atom2, atom1
 		sorted(self._bonds, key = functools.cmp_to_key(cmp_bond))
 
+	def reassign_inums(self):
+		inum = 1
+		for atom in self._atoms:
+			atom.inum = inum
+			inum += 1 
+
 def cmp_atom(a1, a2):
 	if a1.num < a2.num:
 		return -1
