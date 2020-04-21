@@ -36,6 +36,19 @@ def makeNeighborlistsFromBonds(config):
 		atom2.add_neighbor(atom1)
 
 
+def makeNeighborlistsFromDistances(config, threshold = 1.2):
+	for atom in config.atoms():
+		atom.neighbors = []
+	atoms = config.atoms()
+	for i in range(len(atoms)):
+		atom1 = atoms[i]
+		for atom2 in atoms[i+1:]:
+			r = config.interatom_vector(atom1.num, atom2.num)[0].length()
+			if r <= threshold:
+				atom1.add_neighbor(atom2)
+				atom2.add_neighbor(atom1)
+			
+
 def determineClusters(config):
 	all_aggregates = []
 	allAtomsCheckedInums = []
