@@ -178,6 +178,9 @@ class Config:
 		for atom in self._atoms:
 			atom.pos.transform(matrix)
 
+	def center_box(self):
+		self.transform(vector3d.Translation(-self._box_center))
+
 	def convertCoordsCutToUncut(self):
 		for atom in self._atoms:
 			atom.pos.x = atom.pos.x + self._box.x * atom.pbc.x
@@ -248,13 +251,13 @@ class Config:
 		f.write("%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f\n" \
             % ("CRYST1", self.box().x, self.box().y, self.box().z, 90., 90., 90.))
 		f.write("MODEL     %4i\n" % (1))
-		for atom in sorted(self._atoms, cmp=cmp_atom):
+		for atom in sorted(self._atoms, key = functools.cmp_to_key(cmp_atom)):
 			n_atom += 1
 			atom.num = n_atom
 			f.write(atom.pdb_str() + '\n')
 		f.write("TER\n")
 		f.write("ENDMDL\n")
-		for bond in sorted(self._bonds, cmp=cmp_bond):
+		for bond in sorted(self._bonds, key = functools.cmp_to_key(cmp_bond)):
 			visible= True
 			if hide_pbc_bonds:
 				atom1 = self.atom_by_num(bond.atom1.num)
@@ -282,28 +285,28 @@ class Config:
 #Read bonds
 				if linesplit[0] == "Bonds":
 					line = f.readline()
-					for i in xrange(nbond):
+					for i in range(nbond):
 						bond = BondFromLmpDataLine( f.readline() )
 						self.insert_bond(bond)
 
 #Read angles
 				elif linesplit[0] == "Angles":
 					line = f.readline()
-					for i in xrange(nangle):
+					for i in range(nangle):
 						angle = AngleFromLmpDataLine( f.readline() )
 						self.insert_angle(angle)
 
 #Read atoms	
 				elif linesplit[0] == "Atoms":
 					line = f.readline()
-					for i in xrange(natom):
+					for i in range(natom):
 						atom = AtomFromLmpDataLine( f.readline() )
 						self.insert_atom(atom)
 
 #Read dihedrals
 				elif linesplit[0] == "Dihedrals":
 					line = f.readline()
-					for i in xrange(ndihedrals):
+					for i in range(ndihedrals):
 						dihedral = DihedralFromLmpDataLine( f.readline() )
 						self.insert_dihedral(dihedral)
 
@@ -395,7 +398,7 @@ class Config:
 		f = open(fname, 'w')
 		f.write(self.title + "\n")
 		f.write(str(self.n_atom()) + "\n")
-		for atom in sorted(self._atoms, cmp=cmp_atom):
+		for atom in sorted(self._atoms, key = functools.cmp_to_key(cmp_atom)):
 			f.write(atom.gro_str() + '\n')
 		f.write(" " + str(self._box.x).rjust(9) + " " + str(self._box.y).rjust(9) + " " + str(self._box.z).rjust(9))
 		f.close()
