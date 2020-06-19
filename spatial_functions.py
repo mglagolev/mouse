@@ -171,4 +171,53 @@ def CalculateHelixTubeRadius2(config, atom_types, period):
 		molecules_r_tube_counter += 1
 	molecules_r_tube /= molecules_r_tube_counter
 	return molecules_r_tube
-			
+	
+def CalculatePhaseVolume(config, trials, rprobe = -1, error_estimate_runs = 10):
+	""" Calculate relative phase volume for each atom type by Monte-Carlo """
+	import random
+	import ordering_functions as of
+	if rprobe == -1: rprobe = config.box().x / float(trials)**(1./3.) / 2.
+	types = {}
+	n_estimate = int(trials / error_estimate_runs)
+	for atom in config.atoms():
+		if atom.type not in types:
+			types[atom.type] = 0
+	npAtomsByType = {}
+	for atype in types:
+		npAtomsByType[atype] = of.createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [atype])
+	phase = types.copy()
+	error_estimate = {}
+	stdev = {}
+	for atype in types:
+		error_estimate[atype] = []
+	for itry in range(trials):
+		x, y, z = random.random() * config.box().x, random.random() * config.box().y, random.random() * config.box().z
+		probe = Atom()
+		probe.pos = vector3d.Vector3d(x, y, z)
+		neighbors = types.copy()
+		for atype in types:
+			rdf = of.calculateRdfForReference(config, probe, npAtomsByType[atype], rmin = 0., rmax = rprobe, nbin = 1, excludeSelf = False, sameMolecule = True)
+			neighbors[atype] = rdf[0][0]
+		total_neighbors = 0
+		for atype in neighbors:
+			total_neighbors += neighbors[atype]
+		if total_neighbors > 0:	
+			for atype in neighbors:
+				if float(neighbors[atype]) / float(total_neighbors) >= 0.5:
+					phase[atype] += 1
+					break
+		if itry % 100 == 0:
+			sys.stderr.write("\rTrials completed: " + str(itry))
+		if itry % n_estimate == 0 and itry > 0:
+			for atype in types:
+				if len(error_estimate[atype]) >= 1:
+					error_estimate[atype].append(phase[atype] - np.sum(error_estimate[atype]))
+				else:
+					error_estimate[atype].append(phase[atype])
+	for atype in phase:
+		phase[atype] = float(phase[atype]) / float(trials)
+		for i in range(len(error_estimate[atype])):
+			error_estimate[atype][i] /= n_estimate
+		sys.stderr.write(str(error_estimate[atype]) + "\n")
+		stdev[atype] = np.std(error_estimate[atype])
+	return phase, stdev
