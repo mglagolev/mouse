@@ -60,12 +60,12 @@ def createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [], allowedResTyp
 def calculateRdfForReference(config, refAtom, npAtoms, rmin = 0., rmax = -1., nbin = 100, excludeSelf = True, sameMolecule = True):
 	"""Returns numpy histogram for distribution of distance between the atom positions in npAtoms array and the reference atom refAtom."""
 	if rmax < 0.: rmax = min(config.box().x, config.box().y, config.box().z) / 2.
-	drx = npAtoms[3] - refAtom.pos.x
-	dry = npAtoms[4] - refAtom.pos.y
-	drz = npAtoms[5] - refAtom.pos.z
-	drxTrim = drx - config.box().x * np.around(drx / config.box().x)
-	dryTrim = dry - config.box().y * np.around(dry / config.box().y)
-	drzTrim = drz - config.box().z * np.around(drz / config.box().z)
+	drx = np.add(npAtoms[3], -1.* refAtom.pos.x)
+	dry = np.add(npAtoms[4], -1.* refAtom.pos.y)
+	drz = np.add(npAtoms[5], -1.*  refAtom.pos.z)
+	drxTrim = np.add(drx, -1. * config.box().x * np.around(drx / config.box().x))
+	dryTrim = np.add(dry, -1. * config.box().y * np.around(dry / config.box().y))
+	drzTrim = np.add(drz, -1. * config.box().z * np.around(drz / config.box().z))
 	if excludeSelf: notSelf = npAtoms[0] != refAtom.num
 	else: notSelf = 1.
 	if not sameMolecule:
@@ -217,7 +217,7 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 		return s
 	elif mode == 'histo':
 		normHistogram(s_hist)
-	 	return s_hist
+		return s_hist
 
 
 def CalculateCrystallinityParameter(config, bondtypes, reference_vector=vector3d.Vector3d(0. ,0. ,0. ), storeAsAtomtypes = False, mode = 'average', smin = -0.5, smax = 1.0, sbins = 75 ):
