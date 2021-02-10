@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
@@ -33,7 +33,7 @@ args = parser.parse_args()
 readOptions = { "pdb" : { "assignMolecules" : { "type" : args.mol_id, "cluster" : True }}}
 
 for in_data in args.frames:
-	print >> sys.stderr, '\r',
+	sys.stderr.write('\r')
 	frame = read_data_typeselect(in_data, options = readOptions)
 	sys.stderr.write('Initial configuration: '+str(frame.n_atom())+' atoms\n')
 	try:
@@ -77,5 +77,5 @@ for in_data in args.frames:
 	s = CalculateCrystallinityParameter(frame, args.bondtypes, reference_vector = reference_vector, storeAsAtomtypes = storeAsAtomtypes, mode = args.mode[0], sbins = args.bins[0])
 	if storeAsAtomtypes:
 		frame.write_pdb(outPdb, hide_pbc_bonds = True)
-	if args.mode[0] == 'average': print s
+	if args.mode[0] == 'average': sys.stdout.write(str(s) + "\n")
 	if args.mode[0] == 'histo': sys.stdout.write(printHistogram(s, norm = True))
