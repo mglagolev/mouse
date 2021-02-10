@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys, argparse
 from lammpack_types import *
@@ -17,9 +17,9 @@ parser.add_argument('--z', type = int, nargs = '?', default = 1, help = 'number 
 
 args = parser.parse_args()
 
-replicate_x = range(-1 * (args.x / 2), args.x - args.x / 2)
-replicate_y = range(-1 * (args.y / 2), args.y - args.y / 2)
-replicate_z = range(-1 * (args.z / 2), args.z - args.z / 2)
+replicate_x = range(int(-1 * (args.x / 2)),int(args.x - args.x / 2))
+replicate_y = range(int(-1 * (args.y / 2)), int(args.y - args.y / 2))
+replicate_z = range(int(-1 * (args.z / 2)), int(args.z - args.z / 2))
 
 frame = Config()
 
