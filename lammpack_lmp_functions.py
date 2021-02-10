@@ -1,18 +1,15 @@
 import lammpack_types
 
-def BondFromLmpDataLine(line):
+def BondFromLmpDataLine(line, config):
 	bond = lammpack_types.Bond()
 	linesplit = line.split()
 	bond.num = int(linesplit[0])
 	bond.type = linesplit[1]
-	atom1 = int(linesplit[2])
-	atom2 = int(linesplit[3])
-	if atom1 < atom2:
-		bond.atom1.num = atom1
-		bond.atom2.num = atom2
-	else:
-		bond.atom1.num = atom2
-		bond.atom2.num = atom1
+	atom_nums = [int(linesplit[2]) ,int(linesplit[3])]
+	atom_nums.sort()
+	bond.atom1 = config.atom_by_num(atom_nums[0])
+	bond.atom2 = config.atom_by_num(atom_nums[1])
+	bond.num = config.n_bond() + 1
 	return bond
 
 def AtomFromLmpDataLine(line):
