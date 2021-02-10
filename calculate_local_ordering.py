@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
@@ -37,7 +37,7 @@ parser.add_argument('--out-pdb', type = str, nargs = '*', help = "output .pdb wi
 args = parser.parse_args()
 
 for in_data in args.frames:
-	print >> sys.stderr, '\r',
+	sys.stderr.write("\r")
 	if not args.same_molecule: readOptions = {'pdb' : { 'assignMolecules' : {'type' : 'resSeq', 'cluster' : True } } }
 	else: readOptions = {}
 	frame = read_data_typeselect(in_data, options = readOptions)
@@ -66,11 +66,12 @@ for in_data in args.frames:
 		outPdb = args.out_pdb[0]
 		storeAsAtomtypes = True
 	except: storeAsAtomtypes = False
-	frame = select_rectangular(frame, cutx, xrelmin, xrelmax, cuty, yrelmin, yrelmax, cutz, zrelmin, zrelmax)
+	if len(args.subcell) > 0:
+		frame = select_rectangular(frame, cutx, xrelmin, xrelmax, cuty, yrelmin, yrelmax, cutz, zrelmin, zrelmax)
 	sys.stderr.write('After region selection: '+str(frame.n_atom())+'\n')
 	s = CalculateOrientationOrderParameter(frame, args.bondtypes, args.min, args.max, mode = args.mode, storeAsAtomtypes = storeAsAtomtypes, smin = args.histo_min, smax = args.histo_max, sbins = args.histo_bins, referenceResTypes = args.reference_residue, sameMolecule = args.same_molecule)
 	if storeAsAtomtypes:
 		frame.write_pdb(outPdb, hide_pbc_bonds = True)
-	if args.mode == 'average': print s
+	if args.mode == 'average': sys.stdout.write(str(s) + "\n")
 	elif args.mode == 'histo': sys.stdout.write(printHistogram(s, norm = False))
 		
