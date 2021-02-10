@@ -35,7 +35,7 @@ def createNumpyBondsArrayFromConfig(config, allowedBondTypes = [], allowedResTyp
 			rz.append(r.z)
 	resTypes = map(hash8, resTypesStr)
 	molIds = map(hash8, molIdsStr)
-	return np.array((bondNums, resTypes, molIds, bx, by, bz, rx, ry, rz))
+	return np.array((np.array(bondNums), np.array(resTypes), np.array(molIds), np.array(bx), np.array(by), np.array(bz), np.array(rx), np.array(ry), np.array(rz)))
 
 
 def createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [], allowedResTypes = [], allowedMolIds = [], allowedAtomNums = []):
@@ -87,30 +87,33 @@ def calculateAveCosSqForReference(config, refBond, npBonds, rcut, excludeSelf = 
 	bxRef = refBond.atom2.pos.x - refBond.atom1.pos.x
 	byRef = refBond.atom2.pos.y - refBond.atom1.pos.y
 	bzRef = refBond.atom2.pos.z - refBond.atom1.pos.z
-	bx, by, bz = npBonds[3], npBonds[4], npBonds[5]
-	drx = npBonds[6] - float(( refBond.atom1.pos.x + refBond.atom2.pos.x) / 2.)
-	dry = npBonds[7] - float(( refBond.atom1.pos.y + refBond.atom2.pos.y) / 2.)
-	drz = npBonds[8] - float(( refBond.atom1.pos.z + refBond.atom2.pos.z) / 2.)
-	drxTrim = drx - config.box().x * np.around(drx / config.box().x)
-	dryTrim = dry - config.box().y * np.around(dry / config.box().y)
-	drzTrim = drz - config.box().z * np.around(drz / config.box().z)
-	rsq = drxTrim**2 + dryTrim**2 + drzTrim**2
-	if rcut >= 0.: inRange = rsq <= rcut**2
-	else: inRange = 1.
-	if excludeSelf: notSelf = npBonds[0] != refBond.num
-	else: notSelf = 1.
-	if not sameMolecule:
-		emptyMolId = npBonds[2] == hash8('')
-		if np.sum(emptyMolId) > 0:
-			raise NameError("We should omit the atoms belonging to the same molecules, but some mol_ids are empty")
-		notSameMolecule = npBonds[2] != hash8(refBond.atom1.mol_id)
-	else: notSameMolecule = 1.
-	cosSqNormed = inRange * notSelf * notSameMolecule * ( bxRef * bx + byRef * by + bzRef * bz )**2 / ( bxRef**2 + byRef**2 + bzRef**2 ) / ( bx**2 + by**2 + bz**2)
-	cosSqNormedMasked = np.ma.masked_equal(cosSqNormed, 0.)
-	if cosSqNormedMasked.count() > 0:
-		return np.ma.average(cosSqNormedMasked)
+	if bxRef != 0. or byRef != 0. or bzRef != 0.:
+		bx, by, bz = npBonds[3], npBonds[4], npBonds[5]
+		drx = npBonds[6] - float(( refBond.atom1.pos.x + refBond.atom2.pos.x) / 2.)
+		dry = npBonds[7] - float(( refBond.atom1.pos.y + refBond.atom2.pos.y) / 2.)
+		drz = npBonds[8] - float(( refBond.atom1.pos.z + refBond.atom2.pos.z) / 2.)
+		drxTrim = drx - config.box().x * np.around(drx / config.box().x)
+		dryTrim = dry - config.box().y * np.around(dry / config.box().y)
+		drzTrim = drz - config.box().z * np.around(drz / config.box().z)
+		rsq = drxTrim**2 + dryTrim**2 + drzTrim**2
+		if rcut >= 0.: inRange = rsq <= rcut**2
+		else: inRange = 1.
+		if excludeSelf: notSelf = npBonds[0] != refBond.num
+		else: notSelf = 1.
+		if not sameMolecule:
+			emptyMolId = npBonds[2] == hash8('')
+			if np.sum(emptyMolId) > 0:
+				raise NameError("We should omit the atoms belonging to the same molecules, but some mol_ids are empty")
+			notSameMolecule = npBonds[2] != hash8(refBond.atom1.mol_id)
+		else: notSameMolecule = 1.
+		cosSqNormed = inRange * notSelf * notSameMolecule * ( bxRef * bx + byRef * by + bzRef * bz )**2 / ( bxRef**2 + byRef**2 + bzRef**2 ) / ( bx**2 + by**2 + bz**2)
+		cosSqNormedMasked = np.ma.masked_equal(cosSqNormed, 0.)
+		if cosSqNormedMasked.count() > 0:
+			return np.ma.average(cosSqNormedMasked)
+		else:
+			raise NameError("No values to calculate")
 	else:
-		raise NameError("No values to calculate")
+		raise NameError("Zero length of reference bond " + str(refBond.num))
 
 
 def CalculatePairCorrelationFunctions(config, atomtypes = [], rmin = 0., rmax = 0., nbin = 100, sameMolecule = True):
@@ -191,7 +194,7 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 	for bond in config.bonds():
 		if referenceResTypes is None or bond.atom1.res_type in referenceResTypes or len(referenceResTypes) == 0:
 			try:
-				cosSq = calculateAveCosSqForReference(config, bond, npBonds, rmax, sameMolecule = sameMolecule)
+				cosSq = calculateAveCosSqForReference(config, bond, npBonds, rmax, excludeSelf = False, sameMolecule = sameMolecule)
 				if mode == 'histo':
 					updateHistogram(1.5 * cosSq - 0.5, s_hist)
 				elif mode == 'average':
