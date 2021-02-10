@@ -66,7 +66,7 @@ for in_data in args.frames:
 		outPdb = args.out_pdb[0]
 		storeAsAtomtypes = True
 	except: storeAsAtomtypes = False
-	if len(args.subcell) > 0:
+	if args.subcell is not None:
 		frame = select_rectangular(frame, cutx, xrelmin, xrelmax, cuty, yrelmin, yrelmax, cutz, zrelmin, zrelmax)
 	sys.stderr.write('After region selection: '+str(frame.n_atom())+'\n')
 	s = CalculateOrientationOrderParameter(frame, args.bondtypes, args.min, args.max, mode = args.mode, storeAsAtomtypes = storeAsAtomtypes, smin = args.histo_min, smax = args.histo_max, sbins = args.histo_bins, referenceResTypes = args.reference_residue, sameMolecule = args.same_molecule)
