@@ -20,7 +20,7 @@ def determine_data_type( filename ):
 		if ext == '.lammps':
 			ftype_extension = 'lammps'
 #Try to determine file type by keywords
-	infile = open( filename, 'rb' )
+	infile = open( filename, 'r' )
 	header = infile.readline()
 	
 	if len(header) >= 16:	
