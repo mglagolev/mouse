@@ -12,6 +12,9 @@ from gro_functions import *
 from clustering_functions import *
 import functools
 
+def hash8(s):
+	return abs(hash(s)) % (10 ** 8)
+
 class Atom:
 	def __init__(self):
 		self.is_hetatm = False
@@ -36,8 +39,9 @@ class Atom:
 		if self.is_hetatm:
 			field = "HETATM"
 		else:
-			field = "ATOM  "
-		return "%6s%5s %4s %4s%1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f         %2s%2s" \
+			if self.num < 100000: field = "ATOM  "
+			else: field = "ATOM "	#Workaround to use PDB format for >100K atoms. Works with PyMol.
+		return "%s%5s %4s %4s%1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f         %2s%2s" \
             % (field, self.num, 
                pad_atom_type(self.type),
                self.res_type, self.mol_id[:1],
@@ -78,7 +82,10 @@ class Bond:
 
 	def pdb_str(self):
 		field = "CONECT"
-		return "%6s%5s%5s" % (field, self.atom1.num, self.atom2.num)
+		if self.atom1.num >= 100000 or self.atom2.num >= 100000:
+			return "%6s%7s%7s" % (field, self.atom1.num, self.atom2.num)
+		else:
+			return "%6s%5s%5s" % (field, self.atom1.num, self.atom2.num)
 
 
 class Angle:
@@ -116,6 +123,9 @@ class Config:
 		self._box = vector3d.Vector3d()
 		self._box_center = vector3d.Vector3d()
 		self.title = ""
+		self._atoms_by_num = {}
+		self._atoms_by_id = {}
+		self._bonds_by_num = {}
 
 	def box(self):
 		return self._box
@@ -142,9 +152,11 @@ class Config:
 		return self._atoms[i]
 
 	def atom_by_num(self, i):
-		for atom in self._atoms:
-			if atom.num == i:
-				return atom
+		if len(self._atoms_by_num) == len(self._atoms):
+			return self._atoms_by_num[i]
+		else:
+			return [x for x in self._atoms if x.num == i][0]
+
 	def atom_by_inum(self, i):
 		atomIndex = [ x.inum for x in self._atoms ].index(i)
 		return self._atoms[atomIndex]
@@ -161,7 +173,10 @@ class Config:
 		return self._bonds[i]
 
 	def bond_by_num(self, i):
-		return self._bonds[[ x.num for x in self._bonds ].index(i)]
+		if len(self._bonds_by_num) == len(self._bonds):
+			return self._bonds_by_num[i]
+		else:
+			return self._bonds[[ x.num for x in self._bonds ].index(i)]
 
 	def angles(self):
 		return self._angles
@@ -177,8 +192,11 @@ class Config:
 	def transform(self, matrix):
 		for atom in self._atoms:
 			atom.pos.transform(matrix)
+		for atomnum in self._atoms_by_num:
+			self._atoms_by_num[atomnum].pos.transform(matrix)
 
 	def center_box(self):
+		sys.stderr.write("Centering the box around " + str(self._box_center.x) + " " + str(self._box_center.y) + " " + str(self._box_center.z) + "\n")
 		self.transform(vector3d.Translation(-self._box_center))
 
 	def convertCoordsCutToUncut(self):
@@ -186,10 +204,13 @@ class Config:
 			atom.pos.x = atom.pos.x + self._box.x * atom.pbc.x
 			atom.pos.y = atom.pos.y + self._box.y * atom.pbc.y
 			atom.pos.z = atom.pos.z + self._box.z * atom.pbc.z
-			
 
 	def insert_atom(self, atom):
 		self._atoms.append(atom)
+		if atom.num != None:
+			self._atoms_by_num[atom.num] = atom
+		if atom.id != None and atom.id != "":
+			self._atoms_by_id[atom.id] = atom
     
 	def erase_atom(self, atom_type):
 		for atom in self._atoms:
@@ -199,6 +220,8 @@ class Config:
 				return
 	def insert_bond(self, bond):
 		self._bonds.append(bond)
+		if bond.num != None:
+			self._bonds_by_num[bond.num] = bond
 
 	def insert_angle(self, angle):
 		self._angles.append(angle)
@@ -253,7 +276,6 @@ class Config:
 		f.write("MODEL     %4i\n" % (1))
 		for atom in sorted(self._atoms, key = functools.cmp_to_key(cmp_atom)):
 			n_atom += 1
-			atom.num = n_atom
 			f.write(atom.pdb_str() + '\n')
 		f.write("TER\n")
 		f.write("ENDMDL\n")
@@ -286,7 +308,7 @@ class Config:
 				if linesplit[0] == "Bonds":
 					line = f.readline()
 					for i in range(nbond):
-						bond = BondFromLmpDataLine( f.readline() )
+						bond = BondFromLmpDataLine( f.readline(), self )
 						self.insert_bond(bond)
 
 #Read angles
@@ -336,8 +358,9 @@ class Config:
 						continue
 		f.close()
 
+
 	def bond_vector_by_num(self, bond_num):
-		bond = next((x for x in self._bonds if x.num == bond_num), None)
+		bond = self.bond_by_num(bond_num)
 		return self.interatom_vector(bond.atom1.num, bond.atom2.num)
 
 	def interatom_vector(self, atom1_num, atom2_num):
@@ -415,7 +438,7 @@ class Config:
 		inum = 1
 		for atom in self._atoms:
 			atom.inum = inum
-			inum += 1 
+			inum += 1
 
 def cmp_atom(a1, a2):
 	if a1.num < a2.num:
