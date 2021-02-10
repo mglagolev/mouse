@@ -194,7 +194,7 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 	for bond in config.bonds():
 		if referenceResTypes is None or bond.atom1.res_type in referenceResTypes or len(referenceResTypes) == 0:
 			try:
-				cosSq = calculateAveCosSqForReference(config, bond, npBonds, rmax, excludeSelf = False, sameMolecule = sameMolecule)
+				cosSq = calculateAveCosSqForReference(config, bond, npBonds, rmax, excludeSelf = True, sameMolecule = sameMolecule)
 				if mode == 'histo':
 					updateHistogram(1.5 * cosSq - 0.5, s_hist)
 				elif mode == 'average':
