@@ -11,6 +11,7 @@ from lammpack_pdb_functions import *
 from gro_functions import *
 from clustering_functions import *
 import functools
+import numpy as np
 
 def hash8(s):
 	return abs(hash(s)) % (10 ** 8)
@@ -366,43 +367,7 @@ class Config:
 	def interatom_vector(self, atom1_num, atom2_num):
 		atom1 = next((x for x in self._atoms if x.num == atom1_num), None)
 		atom2 = next((x for x in self._atoms if x.num == atom2_num), None)
-		x1, y1, z1 = atom1.pos.x, atom1.pos.y, atom1.pos.z
-		x2, y2, z2 = atom2.pos.x, atom2.pos.y, atom2.pos.z
-		x = x2 - x1
-		y = y2 - y1
-		z = z2 - z1
-		xcenter = (x2 + x1) / 2.
-		ycenter = (y2 + y1) / 2.
-		zcenter = (z2 + z1) / 2.
-		if self._box.x > 0:
-			x_trimmed = x - self._box.x * int(round(x / self._box.x))
-			xcenter_trimmed = xcenter -  0.5 * self._box.x * int(round(x / self._box.x))
-			xcenter_trimmed = xcenter_trimmed - self._box.x * int(round(xcenter_trimmed / self._box.x))
-		else:
-			x_trimmed = x
-			xcenter_trimmed = xcenter
-			xcenter_trimmed = xcenter_trimmed - self._box.x * int(round(xcenter_trimmed / self._box.x))
-		if self._box.y > 0:
-			y_trimmed = y - self._box.y * int(round(y / self._box.y))
-			ycenter_trimmed = ycenter -  0.5 * self._box.y * int(round(y / self._box.y))
-			ycenter_trimmed = ycenter_trimmed - self._box.y * int(round(ycenter_trimmed / self._box.y))
-		else:
-			y_trimmed = y
-			ycenter_trimmed = ycenter
-			ycenter_trimmed = ycenter_trimmed - self._box.y * int(round(ycenter_trimmed / self._box.y))
-		if self._box.z > 0:
-			z_trimmed = z - self._box.z * int(round(z / self._box.z))
-			zcenter_trimmed = zcenter -  0.5 * self._box.z * int(round(z / self._box.z))
-			zcenter_trimmed = zcenter_trimmed - self._box.z * int(round(zcenter_trimmed / self._box.z))
-		else:
-			z_trimmed = z
-			zcenter_trimmed = zcenter
-			zcenter_trimmed = zcenter_trimmed - self._box.z * int(round(zcenter_trimmed / self._box.z))
-		_bond_vector = vector3d.Vector3d()
-		_bond_vector.set(x_trimmed, y_trimmed, z_trimmed)
-		_bondcenter_vector = vector3d.Vector3d()
-		_bondcenter_vector.set(xcenter_trimmed, ycenter_trimmed, zcenter_trimmed)
-		return _bond_vector, _bondcenter_vector
+		return vector_and_center_pbc_trim(atom1.pos, atom2.pos, self.box())
 
 	def read_gro(self, fname):
 		self.clear()
@@ -471,3 +436,57 @@ def pad_atom_type(in_atom_type):
     else:
       atom_type = " %s" % atom_type
   return atom_type
+  
+def vector_and_center_pbc_trim(point1, point2, box, method = 1):
+	""" Calculate the vector coordinates and the position of its center in the master cell """
+	if method == 1:
+		x = point2.x - point1.x
+		xcenter = (point2.x + point1.x) / 2.
+		x_trimmed = np.remainder(x + box.x / 2., box.x) - box.x / 2.
+		xcenter_trimmed = xcenter + (x_trimmed - x) / 2.
+		y = point2.y - point1.y
+		ycenter = (point2.y + point1.y) / 2.
+		y_trimmed = np.remainder(y + box.y / 2., box.y) - box.y / 2.
+		ycenter_trimmed = ycenter + (y_trimmed - y) / 2.
+		z = point2.z - point1.z
+		zcenter = (point2.z + point1.z) / 2.
+		z_trimmed = np.remainder(z + box.z / 2., box.z) - box.z / 2.
+		zcenter_trimmed = zcenter + (z_trimmed - z) / 2.
+	elif method == 2:
+		x1, y1, z1 = point1.x, point1.y, point1.z
+		x2, y2, z2 = point2.x, point2.y, point2.z
+		x = x2 - x1
+		y = y2 - y1
+		z = z2 - z1
+		xcenter = (x2 + x1) / 2.
+		ycenter = (y2 + y1) / 2.
+		zcenter = (z2 + z1) / 2.
+		if box.x > 0:
+			x_trimmed = x - box.x * int(round(x / box.x))
+			xcenter_trimmed = xcenter -  0.5 * box.x * int(round(x / box.x))
+			xcenter_trimmed = xcenter_trimmed - box.x * int(round(xcenter_trimmed / box.x))
+		else:
+			x_trimmed = x
+			xcenter_trimmed = xcenter
+			xcenter_trimmed = xcenter_trimmed - box.x * int(round(xcenter_trimmed / box.x))
+		if box.y > 0:
+			y_trimmed = y - box.y * int(round(y / box.y))
+			ycenter_trimmed = ycenter -  0.5 * box.y * int(round(y / box.y))
+			ycenter_trimmed = ycenter_trimmed - box.y * int(round(ycenter_trimmed / box.y))
+		else:
+			y_trimmed = y
+			ycenter_trimmed = ycenter
+			ycenter_trimmed = ycenter_trimmed - box.y * int(round(ycenter_trimmed / box.y))
+		if box.z > 0:
+			z_trimmed = z - box.z * int(round(z / box.z))
+			zcenter_trimmed = zcenter -  0.5 * box.z * int(round(z / box.z))
+			zcenter_trimmed = zcenter_trimmed - box.z * int(round(zcenter_trimmed / box.z))
+		else:
+			z_trimmed = z
+			zcenter_trimmed = zcenter
+			zcenter_trimmed = zcenter_trimmed - box.z * int(round(zcenter_trimmed / box.z))
+	_vector = vector3d.Vector3d()
+	_vector.set(x_trimmed, y_trimmed, z_trimmed)
+	_center_vector = vector3d.Vector3d()
+	_center_vector.set(xcenter_trimmed, ycenter_trimmed, zcenter_trimmed)
+	return _vector, _center_vector
