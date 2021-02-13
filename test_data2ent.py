@@ -19,7 +19,7 @@ frame = Config()
 
 frame.read_lmp_data(args.input)
 
-if args.atomtypes != []:
+if args.atomtypes is not None:
 	frame = lammpack_misc.selectByAtomFields(frame, { "type" : args.atomtypes })
 
 if args.center:
