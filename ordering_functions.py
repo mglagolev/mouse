@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from lammpack_misc import *
 from lammpack_types import *
@@ -22,7 +22,10 @@ def createNumpyBondsArrayFromConfig(config, allowedBondTypes = [], allowedResTyp
 	bx, by, bz = [], [], []
 	rx, ry, rz = [], [], []
 	for bond in config.bonds():
-		if ( allowedBondTypes is None or bond.type in allowedBondTypes or len(allowedBondTypes) == 0 ) and ( allowedResTypes is None or ( bond.atom1.res_type in allowedResTypes and bond.atom2.res_type in allowedResTypes ) or len(allowedResTypes) == 0 ) and ( allowedMolIds is None or ( bond.atom1.mol_id in allowedMolIds and bond.atom2.mol_id in allowedMolIds ) or len(allowedMolIds) == 0 ) and ( allowedBondNums is None or bond.num in allowedBondNums or len(allowedBondNums) == 0):
+		if ( allowedBondTypes is None or bond.type in allowedBondTypes or len(allowedBondTypes) == 0 ) \
+		and ( allowedResTypes is None or ( bond.atom1.res_type in allowedResTypes and bond.atom2.res_type in allowedResTypes ) or len(allowedResTypes) == 0 ) \
+		and ( allowedMolIds is None or ( bond.atom1.mol_id in allowedMolIds and bond.atom2.mol_id in allowedMolIds ) or len(allowedMolIds) == 0 ) \
+		and ( allowedBondNums is None or bond.num in allowedBondNums or len(allowedBondNums) == 0):
 			b, r = config.bond_vector_by_num(bond.num)
 			bondNums.append(bond.num)
 			resTypesStr.append(bond.atom1.res_type)
@@ -45,7 +48,10 @@ def createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [], allowedResTyp
 	atomNums, resTypes, molIds = [], [], []
 	x, y, z = [], [], []
 	for atom in config.atoms():
-		if ( atom.type in allowedAtomTypes or len(allowedAtomTypes) == 0 ) and ( atom.res_type in allowedResTypes or len(allowedResTypes) == 0 ) and (atom.mol_id in allowedMolIds or len(allowedMolIds) == 0) and (atom.num in allowedAtomNums or len(allowedAtomNums) == 0):
+		if ( atom.type in allowedAtomTypes or len(allowedAtomTypes) == 0 ) \
+		and ( atom.res_type in allowedResTypes or len(allowedResTypes) == 0 ) \
+		and (atom.mol_id in allowedMolIds or len(allowedMolIds) == 0) \
+		and (atom.num in allowedAtomNums or len(allowedAtomNums) == 0):
 			atomNums.append(atom.num)
 			resTypesStr.append(atom.res_type)
 			molIdsStr.append(atom.mol_id)
@@ -84,14 +90,16 @@ def calculateRdfForReference(config, refAtom, npAtoms, rmin = 0., rmax = -1., nb
 
 
 def calculateAveCosSqForReference(config, refBond, npBonds, rcut, excludeSelf = True, sameMolecule = True):
-	bxRef = refBond.atom2.pos.x - refBond.atom1.pos.x
-	byRef = refBond.atom2.pos.y - refBond.atom1.pos.y
-	bzRef = refBond.atom2.pos.z - refBond.atom1.pos.z
+	#bxRef = refBond.atom2.pos.x - refBond.atom1.pos.x
+	#byRef = refBond.atom2.pos.y - refBond.atom1.pos.y
+	#bzRef = refBond.atom2.pos.z - refBond.atom1.pos.z
+	bRef, bRefCenter = config.bond_vector_by_num(refBond.num)
+	bxRef, byRef, bzRef = bRef.x, bRef.y, bRef.z
 	if bxRef != 0. or byRef != 0. or bzRef != 0.:
 		bx, by, bz = npBonds[3], npBonds[4], npBonds[5]
-		drx = npBonds[6] - float(( refBond.atom1.pos.x + refBond.atom2.pos.x) / 2.)
-		dry = npBonds[7] - float(( refBond.atom1.pos.y + refBond.atom2.pos.y) / 2.)
-		drz = npBonds[8] - float(( refBond.atom1.pos.z + refBond.atom2.pos.z) / 2.)
+		drx = npBonds[6] - bRefCenter.x #float(( refBond.atom1.pos.x + refBond.atom2.pos.x) / 2.)
+		dry = npBonds[7] - bRefCenter.y #float(( refBond.atom1.pos.y + refBond.atom2.pos.y) / 2.)
+		drz = npBonds[8] - bRefCenter.z #float(( refBond.atom1.pos.z + refBond.atom2.pos.z) / 2.)
 		drxTrim = drx - config.box().x * np.around(drx / config.box().x)
 		dryTrim = dry - config.box().y * np.around(dry / config.box().y)
 		drzTrim = drz - config.box().z * np.around(drz / config.box().z)
@@ -192,7 +200,8 @@ def CalculateOrientationOrderParameter(config, bondtypes, rmin = 0., rmax = 0., 
 		atomOrderingList = []
 	npBonds = createNumpyBondsArrayFromConfig(config, allowedBondTypes = bondtypes)
 	for bond in config.bonds():
-		if referenceResTypes is None or bond.atom1.res_type in referenceResTypes or len(referenceResTypes) == 0:
+		if ( bondtypes is None or bond.type in bondtypes or len(bondtypes) == 0 ) \
+		and ( referenceResTypes is None or ( bond.atom1.res_type in referenceResTypes and bond.atom2.res_type in referenceResTypes ) or len(referenceResTypes) == 0 ):
 			try:
 				cosSq = calculateAveCosSqForReference(config, bond, npBonds, rmax, excludeSelf = True, sameMolecule = sameMolecule)
 				if mode == 'histo':
