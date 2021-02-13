@@ -64,6 +64,7 @@ def read_data_typeselect( filename, ftype=None, options = {} ):
 	else:
 		error_str = "No handler function for file type " + ftype
 		raise NameError(error_str)
+	
 
 def vector_pbc_trim( vector, box ):
 #Calculate the values of the vector between the nearest replicas taking into account the periodic boundary conditions
@@ -181,7 +182,7 @@ def GetMoleculeAtomlists(config, atom_types=["All"]):
 	return molecules_index, molecules_atoms
 
 def createHistogram(minvalue, maxvalue, nbins):
-	if isinstance(nbins, (int, long)):
+	if isinstance(nbins, int):
 		if nbins > 1:	step = (maxvalue - minvalue) / ( nbins - 1)
 		elif nbins == 1: step = maxvalue - minvalue
 		else: raise NameError("Invalid number of bins in the histogram (" + str(nbins) + ")")
