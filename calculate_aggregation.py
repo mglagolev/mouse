@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
@@ -17,7 +17,7 @@ parser.add_argument('--threshold', type = float, nargs = '?', default = 1.2, hel
 args = parser.parse_args()
 
 for in_data in args.frames:
-	print >> sys.stderr, '\r',
+	sys.stderr.write('\r')
 	frame = read_data_typeselect(in_data)
 	sys.stderr.write('Read frame (natom): '+str(frame.n_atom())+'\n')
 	frame = selectByAtomFields(frame, { "type" : args.atomtypes })
