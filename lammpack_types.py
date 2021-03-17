@@ -296,7 +296,7 @@ class Config:
 	def read_lmp_dump(self, lmp_dump):
 		raise NameError('Reading LAMMPS dump is not yet implemented')
 
-	def read_lmp_data(self, lmp_data):
+	def read_lmp_data(self, lmp_data, bonds = True, angles = True, dihedrals = True):
 		f = open(lmp_data, 'r')
 		while True:
 			line=f.readline()
@@ -310,14 +310,16 @@ class Config:
 					line = f.readline()
 					for i in range(nbond):
 						bond = BondFromLmpDataLine( f.readline(), self )
-						self.insert_bond(bond)
+						if bonds:
+							self.insert_bond(bond)
 
 #Read angles
 				elif linesplit[0] == "Angles":
 					line = f.readline()
 					for i in range(nangle):
 						angle = AngleFromLmpDataLine( f.readline() )
-						self.insert_angle(angle)
+						if angles:
+							self.insert_angle(angle)
 
 #Read atoms	
 				elif linesplit[0] == "Atoms":
@@ -331,7 +333,8 @@ class Config:
 					line = f.readline()
 					for i in range(ndihedrals):
 						dihedral = DihedralFromLmpDataLine( f.readline() )
-						self.insert_dihedral(dihedral)
+						if dihedrals:
+							self.insert_dihedral(dihedral)
 
 				elif len(linesplit) >= 4 and linesplit[2] == 'xlo' and linesplit[3] == 'xhi':
 					xlo, xhi = float(linesplit[0]), float(linesplit[1])
