@@ -60,7 +60,7 @@ def createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [], allowedResTyp
 			z.append(atom.pos.z)
 	resTypes = map(hash8, resTypesStr)
 	molIds = map(hash8, molIdsStr)
-	return np.array((atomNums, resTypes, molIds, x, y, z))
+	return np.array((atomNums, resTypes, molIds, np.array(x), np.array(y), np.array(z)))
 
 
 def calculateRdfForReference(config, refAtom, npAtoms, rmin = 0., rmax = -1., nbin = 100, excludeSelf = True, sameMolecule = True):
