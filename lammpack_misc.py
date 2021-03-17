@@ -79,26 +79,17 @@ def selectConstraintsByAtom(config, atomsList):
 	newConstraints = { "bonds" : [], "angles" : [], "dihedrals" : [] }
 	atomNumbersList = [ x.num for x in atomsList ]
 	for bond in config.bonds():
-		try:
-			atomNumbersList.index(bond.atom1.num)
-			atomNumbersList.index(bond.atom2.num)
+		a1, a2 = bond.atom1.num, bond.atom2.num
+		if a1 in atomNumbersList and a2 in atomNumbersList:
 			newConstraints["bonds"].append(bond)
-		except ValueError: pass
 	for angle in config.angles():
-		try:
-			atomNumbersList.index(angle.atom1.num)
-			atomNumbersList.index(angle.atom2.num)
-			atomNumbersList.index(angle.atom3.num)
+		a1, a2, a3 = angle.atom1.num, angle.atom2.num, angle.atom3.num
+		if a1 in atomNumbersList and a2 in atomNumbersList and a3 in atomNumbersList:
 			newConstraints["angles"].append(angle)
-		except ValueError: pass
 	for dihedral in config.dihedrals():
-		try:
-			atomNumbersList.index(dihedral.atom1.num)
-			atomNumbersList.index(dihedral.atom2.num)
-			atomNumbersList.index(dihedral.atom3.num)
-			atomNumbersList.index(dihedral.atom4.num)
+		a1, a2, a3, a4 = dihedral.atom1.num, dihedral.atom2.num, dihedral.atom3.num, dihedral.atom4.num
+		if a1 in atomNumbersList and a2 in atomNumbersList and a3 in atomNumbersList and a4 in atomNumbersList:
 			newConstraints["dihedrals"].append(dihedral)
-		except ValueError: pass
 	return newConstraints
 
 
@@ -113,13 +104,11 @@ def selectByAtomFields(config, selectionCriteria):
 	newConfig = Config()
 	newConfig.set_box(config.box())
 	newConfig.set_box_center(config.box_center())
-	for atom in config.atoms():
-		try:
-			for fieldName in selectionCriteria:
-				fieldValue = getattr(atom, fieldName)
-				selectionCriteria[fieldName].index(fieldValue)
-			newConfig.insert_atom(atom)
-		except ValueError: pass
+	selected_atoms = config.atoms()
+	for fieldName in selectionCriteria:
+		selected_atoms = [atom for atom in selected_atoms if getattr(atom,fieldName) in selectionCriteria[fieldName]]
+	for atom in selected_atoms:
+		newConfig.insert_atom(atom)
 	newConstraints = selectConstraintsByAtom(config, newConfig.atoms())
 	newBonds, newAngles, newDihedrals = newConstraints["bonds"], newConstraints["angles"], newConstraints["dihedrals"]
 	for bond in newBonds: newConfig.insert_bond(bond)
