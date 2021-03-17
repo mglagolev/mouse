@@ -17,7 +17,7 @@ args = parser.parse_args()
 
 frame = Config()
 
-frame.read_lmp_data(args.input)
+frame.read_lmp_data(args.input, angles = False, dihedrals = False)
 
 if args.atomtypes is not None:
 	frame = lammpack_misc.selectByAtomFields(frame, { "type" : args.atomtypes })
