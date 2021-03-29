@@ -18,12 +18,12 @@ def clusteringCore(aggregate, allAtomsCheckedInums, atom, start = False):
 		clusteringCore(aggregate, allAtomsCheckedInums, nextatom)
 
 def firstMissingInteger(somelist):		#find the first missing positive integer in a list of
+	someset = set(somelist)
 	result = 1
 	while 1:
-		try:
-			somelist.index(result)
-			result += 1
-		except ValueError: return result
+		if result not in someset:
+			return result
+		result += 1
 		
 
 def makeNeighborlistsFromBonds(config):
@@ -70,3 +70,14 @@ def assignMoleculesFromBonds(config):
 	for nmol in range(len(molecules)):
 		for atom in molecules[nmol]:
 			atom.mol_id = str(nmol)
+			
+def markAtoms(config, atom_lists):
+	""" Append an alphabetic character to the type of all atoms in the configuration
+	according to the number of aggregate they belong to """
+	import string
+	enumeration = list(string.ascii_uppercase) + list(string.ascii_lowercase)
+	i = 0
+	for atom_list in atom_lists:
+		mark = enumeration[i % len(enumeration)]
+		for atom in config._atoms:
+			atom.type = str(atom.type) + mark

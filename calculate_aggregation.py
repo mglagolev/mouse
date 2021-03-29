@@ -6,6 +6,8 @@ import argparse
 from lammpack_types import Config
 from ordering_functions import *
 
+sys.setrecursionlimit(40000)
+
 parser = argparse.ArgumentParser(description = 'Determine the aggregates in the systems and print out the atoms belonging to each of them.')
 
 parser.add_argument('frames', metavar = 'ATOMIC COORDINATES', type = str, nargs = '+', help = 'data file')
@@ -13,6 +15,8 @@ parser.add_argument('frames', metavar = 'ATOMIC COORDINATES', type = str, nargs 
 parser.add_argument('--atomtypes', type = str, nargs = '+', help = 'types of atoms')
 
 parser.add_argument('--threshold', type = float, nargs = '?', default = 1.2, help = 'maximum distance between the atoms to be considered as clustered')
+
+parser.add_argument('--marked-pdb', type = str, nargs = '?', help = 'make output pdb where alphabetic suffixes are appended to all atom types according to the aggregate they belong to')
 
 args = parser.parse_args()
 
@@ -26,6 +30,10 @@ for in_data in args.frames:
 	sys.stderr.write('Box size: x ' + str(frame.box().x) + ' y ' + str(frame.box().y) + ' z ' + str(frame.box().z) + '\n')
 	makeNeighborlistsFromDistances(frame, threshold = args.threshold)
 	all_aggregates = determineClusters(frame)
+	if args.marked_pdb is not None:
+		markAtoms(frame, all_aggregates)
+		frame.center_box()
+		frame.write_pdb(args.marked_pdb, True)		
 	for aggregate in all_aggregates:
 		atom_nums_array = []
 		for atom in aggregate:
