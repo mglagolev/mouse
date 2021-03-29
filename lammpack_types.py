@@ -368,8 +368,8 @@ class Config:
 		return self.interatom_vector(bond.atom1.num, bond.atom2.num)
 
 	def interatom_vector(self, atom1_num, atom2_num):
-		atom1 = next((x for x in self._atoms if x.num == atom1_num), None)
-		atom2 = next((x for x in self._atoms if x.num == atom2_num), None)
+		atom1 = self.atom_by_num(atom1_num)
+		atom2 = self.atom_by_num(atom2_num)
 		return vector_and_center_pbc_trim(atom1.pos, atom2.pos, self.box())
 
 	def read_gro(self, fname):
