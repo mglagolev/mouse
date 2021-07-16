@@ -191,10 +191,12 @@ class Config:
 		del self._atoms[:]
 
 	def transform(self, matrix):
-		for atom in self._atoms:
-			atom.pos.transform(matrix)
-		for atomnum in self._atoms_by_num:
-			self._atoms_by_num[atomnum].pos.transform(matrix)
+		if len(self._atoms_by_num) == self.n_atom():
+			for atomnum in self._atoms_by_num:
+				self._atoms_by_num[atomnum].pos.transform(matrix)	
+		else:
+			for atom in self._atoms:
+				atom.pos.transform(matrix)
 
 	def center_box(self):
 		sys.stderr.write("Centering the box around " + str(self._box_center.x) + " " + str(self._box_center.y) + " " + str(self._box_center.z) + "\n")
@@ -205,6 +207,26 @@ class Config:
 			atom.pos.x = atom.pos.x + self._box.x * atom.pbc.x
 			atom.pos.y = atom.pos.y + self._box.y * atom.pbc.y
 			atom.pos.z = atom.pos.z + self._box.z * atom.pbc.z
+			
+	def com(self):
+		com = vector3d.Vector3d(0., 0., 0.)
+		atoms_with_mass = len(list([ atom.mass for atom in self._atoms if atom.mass > 0. ]))
+		if atoms_with_mass > 0:
+			use_masses = True
+			denominator = atoms_with_mass
+		else:
+			use_masses = False
+			denominator = self.n_atom()
+		for atom in self._atoms:
+			if use_masses: mass = atom.mass
+			else: mass = 1.0
+			com += atom.pos.scaled_vec(mass)
+		com.scale(1. / float(denominator))
+		return com
+		
+	def com_to_zero(self):
+		self.transform(vector3d.Translation(-self.com()))
+			
 
 	def insert_atom(self, atom):
 		self._atoms.append(atom)
