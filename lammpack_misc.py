@@ -144,31 +144,35 @@ def select_rectangular(config, cutx = False, xrelmin = 0., xrelmax = 1., cuty = 
 	return newConfig
 
 
-def GetMoleculeAtomlists(config, atom_types=["All"]):
+def GetMoleculeAtoms(config, atom_types=["All"]):
+	""" Return list of atoms for each molecule in the system with unique mol_id """
 	natom = config.n_atom()
 	molecules_index = []
 	molecules_atoms = []
-	for i in range(natom):
-		atom = config.atom(i)
-		mol = atom.mol_id
-		check_types = True
-		try:
-			if atom_types[0] == "All":
-				check_types = False
-			else:
-				atom_type = atom.type
-		except IndexError: atom_type = atom.type
-		if check_types:
-			try:
-				atom_types.index(atom_type)
-			except ValueError:
-				continue
-		try:
-			molecules_atoms[molecules_index.index(mol)].append(atom.num)
-		except ValueError:
-			molecules_index.append(mol)
-			molecules_atoms.append([atom.num])
+	mol_ids_set = set([atom.mol_id for atom in config.atoms()])
+	molecules_atomlists = {}
+	for mol_id in mol_ids_set:
+		molecules_atomlists[mol_id] = []
+	check_types = True
+	try:
+		if atom_types[0] == "All":
+			check_types = False
+	except IndexError: pass
+	for atom in config.atoms():
+		if not check_types or atom.type in atom_types:
+			molecules_atomlists[atom.mol_id].append(atom)
+	for mol_id in molecules_atomlists:
+		molecules_index.append(mol_id)
+		molecules_atoms.append(molecules_atomlists[mol_id])
 	return molecules_index, molecules_atoms
+	
+def GetMoleculeAtomlists(config, atom_types = ["All"]):
+	""" Return list of atom nums for each molecule in the system with unique mol_id """
+	molecules_index, molecules_atoms = GetMoleculeAtoms(config, atom_types = atom_types)
+	for i in range(len(molecules_atoms)):
+		molecules_atoms[i] = [atom.num for atom in molecules_atoms[i]]
+	return molecules_index, molecules_atoms
+	
 
 def createHistogram(minvalue, maxvalue, nbins):
 	if isinstance(nbins, int):
