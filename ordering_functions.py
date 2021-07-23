@@ -290,10 +290,13 @@ def CalculateComRdfs(config, rmin, rmax, nbin):
 	""" Calculate radial distribution function for different atomtypes depending on the distance
 	from the center of mass of the system """
 	import ordering_functions as of
+	import copy
+	cpconf = copy.deepcopy(config)
+	cpconf.convertCoordsCutToUncut()
 	center = Atom()
-	center.pos = config.com()
+	center.pos = cpconf.com()
 	# Create a set of atom types
-	atypes = set(list(atom.type for atom in config.atoms())) # Create a set of unique atom types
+	atypes = set(list(atom.type for atom in cpconf.atoms())) # Create a set of unique atom types
 	#Prepare rdf 
 	rdfs = {}
 	distances, volumes = [], []
@@ -306,8 +309,8 @@ def CalculateComRdfs(config, rmin, rmax, nbin):
 	rdfdata = {}
 	norm = {}
 	for atype in atypes:
-		npAtomsByType = of.createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [atype])
-		rdf = of.calculateRdfForReference(config, center, npAtomsByType, rmin = rmin, rmax = rmax, nbin = nbin, excludeSelf = False, sameMolecule = True)
+		npAtomsByType = of.createNumpyAtomsArrayFromConfig(cpconf, allowedAtomTypes = [atype])
+		rdf = of.calculateRdfForReference(cpconf, center, npAtomsByType, rmin = rmin, rmax = rmax, nbin = nbin, excludeSelf = False, sameMolecule = True)
 		rdfdata[atype] = rdf[0]
 		norm[atype] = np.sum(rdf[0])
 	rdfs['data'] = rdfdata
