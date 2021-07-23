@@ -210,3 +210,24 @@ def printHistogram(histogram, norm = False):
 		if norm: value /= histogram["norm"][i]
 		s += str(x) + "\t" + str(value) + "\n"
 	return s
+	
+def printRdfs(rdfs, norm = True):
+	nlines = len(rdfs['r'])
+	sys.stdout.write("#r	vol")
+	orderedKeys = []
+	for key in rdfs['data']:
+		orderedKeys.append(key)
+	orderedKeys.sort()
+	for key in orderedKeys:
+		sys.stdout.write("	"+str(key))
+	sys.stdout.write("\n")
+	for nline in range(nlines):
+		r, v = rdfs['r'][nline], rdfs['v'][nline]
+		sys.stdout.write(str(r))
+		sys.stdout.write("	" + str(v))
+		for key in orderedKeys:
+			if norm:
+				sys.stdout.write("	" + str(rdfs['data'][key][nline] / rdfs['norm'][key] / v ))
+			else:
+				sys.stdout.write("	" + str(rdfs['data'][key][nline] ))
+		sys.stdout.write("\n")
