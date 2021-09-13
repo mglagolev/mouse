@@ -417,9 +417,9 @@ class Config:
 		f.write(str(len(list(set(x.type for x in self._angles)))) + " angle types\n")
 		f.write(str(len(self._dihedrals)) + " dihedrals\n")
 		f.write(str(len(list(set(x.type for x in self._dihedrals)))) + " dihedral types\n")
-		xlo, xhi = self.box_center().x - self.box().x, self.box_center().x + self.box().x
-		ylo, yhi = self.box_center().y - self.box().y, self.box_center().y + self.box().y
-		zlo, zhi = self.box_center().z - self.box().z, self.box_center().z + self.box().z
+		xlo, xhi = self.box_center().x - self.box().x / 2., self.box_center().x + self.box().x / 2.
+		ylo, yhi = self.box_center().y - self.box().y / 2., self.box_center().y + self.box().y / 2.
+		zlo, zhi = self.box_center().z - self.box().z / 2., self.box_center().z + self.box().z / 2.
 		f.write("\n")
 		f.write(str(xlo) + "\t" + str(xhi) + "\txlo\txhi\n")
 		f.write(str(ylo) + "\t" + str(yhi) + "\tylo\tyhi\n")
