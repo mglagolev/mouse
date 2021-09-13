@@ -90,6 +90,7 @@ def calculateRdfForReference(config, refAtom, npAtoms, rmin = 0., rmax = -1., nb
 
 
 def calculateAveCosSqForReference(config, refBond, npBonds, rcut, excludeSelf = True, sameMolecule = True):
+	sys.stderr.write("Function: calculateAveCosSqForReference; sameMolecule = " + str(sameMolecule) + "\n")
 	#bxRef = refBond.atom2.pos.x - refBond.atom1.pos.x
 	#byRef = refBond.atom2.pos.y - refBond.atom1.pos.y
 	#bzRef = refBond.atom2.pos.z - refBond.atom1.pos.z
@@ -106,13 +107,13 @@ def calculateAveCosSqForReference(config, refBond, npBonds, rcut, excludeSelf = 
 		rsq = drxTrim**2 + dryTrim**2 + drzTrim**2
 		if rcut >= 0.: inRange = rsq <= rcut**2
 		else: inRange = 1.
-		if excludeSelf: notSelf = npBonds[0] != refBond.num
+		if excludeSelf: notSelf = np.not_equal(npBonds[0],refBond.num)
 		else: notSelf = 1.
 		if not sameMolecule:
 			emptyMolId = npBonds[2] == hash8('')
 			if np.sum(emptyMolId) > 0:
 				raise NameError("We should omit the atoms belonging to the same molecules, but some mol_ids are empty")
-			notSameMolecule = npBonds[2] != hash8(refBond.atom1.mol_id)
+			notSameMolecule = np.not_equal(npBonds[2],hash8(refBond.atom1.mol_id))
 		else: notSameMolecule = 1.
 		cosSqNormed = inRange * notSelf * notSameMolecule * ( bxRef * bx + byRef * by + bzRef * bz )**2 / ( bxRef**2 + byRef**2 + bzRef**2 ) / ( bx**2 + by**2 + bz**2)
 		cosSqNormedMasked = np.ma.masked_equal(cosSqNormed, 0.)
