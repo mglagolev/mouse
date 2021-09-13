@@ -64,6 +64,14 @@ class Atom:
 		self.type[:5], self.num,
 		self.pos.x, self.pos.y, self.pos.z,
 		self.vel.x, self.vel.y, self.vel.z)
+		
+	def lmp_str(self):
+		delimiter = "\t"
+		return delimiter.join(map(str, [self.num, self.mol_id, self.type, self.pos.x, self.pos.y, self.pos.z, self.pbc.x, self.pbc.y, self.pbc.z]))
+		
+	def lmp_vel_str(self):
+		delimiter = "\t"
+		return delimiter.join(map(str, [self.num, self.vel.x, self.vel.y, self.vel.z]))
 
 	def add_neighbor(self, atom):
 		self.neighbors.append(atom)
@@ -87,6 +95,10 @@ class Bond:
 			return "%6s%7s%7s" % (field, self.atom1.num, self.atom2.num)
 		else:
 			return "%6s%5s%5s" % (field, self.atom1.num, self.atom2.num)
+			
+	def lmp_str(self):
+		delimiter = "\t"
+		return delimiter.join(map(str, [self.num, self.type, self.atom1.num, self.atom2.num]))
 
 
 class Angle:
@@ -96,6 +108,10 @@ class Angle:
 		self.atom3 = Atom()
 		self.num = 0
 		self.type = ""
+		
+	def lmp_str(self):
+		delimiter = "\t"
+		return delimiter.join(map(str, [self.num, self.type, self.atom1.num, self.atom2.num, self.atom3.num]))
 
 
 class Dihedral:
@@ -106,6 +122,10 @@ class Dihedral:
 		self.atom4 = Atom()
 		self.num = 0
 		self.type = ""
+		
+	def lmp_str(self):
+		delimiter = "\t"
+		return delimiter.join(map(str, [self.num, self.type, self.atom1.num, self.atom2.num, self.atom3.num, self.atom4.num]))
 
 class Molecule:
 	def __init__(self):
@@ -382,6 +402,40 @@ class Config:
 				else:
 					if linesplit[0] == "LAMMPS":
 						continue
+		f.close()
+		
+	def write_lmp_data(self, lmp_data):
+		import __main__
+		f = open(lmp_data, 'w')
+		f.write("LAMMPS data file via " + os.path.basename(__main__.__file__) + ", version " + "0.0" + ", timestep = 0\n")
+		f.write("\n")
+		f.write(str(len(self._atoms)) + " atoms\n")
+		f.write(str(len(list(set(x.type for x in self._atoms)))) + " atom types\n")
+		f.write(str(len(self._bonds)) + " bonds\n")
+		f.write(str(len(list(set(x.type for x in self._bonds)))) + " bond types\n")
+		f.write(str(len(self._angles)) + " angles\n")
+		f.write(str(len(list(set(x.type for x in self._angles)))) + " angle types\n")
+		f.write(str(len(self._dihedrals)) + " dihedrals\n")
+		f.write(str(len(list(set(x.type for x in self._dihedrals)))) + " dihedral types\n")
+		if len(self.atoms()) > 0:
+			f.write("\nAtoms\n\n")
+			for atom in self.atoms():
+				f.write(atom.lmp_str() + "\n")
+			f.write("\nVelocities\n\n")
+			for atom in self.atoms():
+				f.write(atom.lmp_vel_str() + "\n")
+		if len(self.bonds()) > 0:
+			f.write("\nBonds\n\n")
+			for bond in self.bonds():
+				f.write(bond.lmp_str() + "\n")
+		if len(self.angles()) > 0:
+			f.write("\nAngles\n\n")
+			for angle in self.angles():
+				f.write(angle.lmp_str() + "\n")
+		if len(self.dihedrals()) > 0:
+			f.write("\nDihedrals\n\n")
+			for dihedral in self.dihedrals():
+				f.write(dihedral.lmp_str() + "\n")
 		f.close()
 
 
