@@ -36,9 +36,9 @@ def createNumpyBondsArrayFromConfig(config, allowedBondTypes = [], allowedResTyp
 			rx.append(r.x)
 			ry.append(r.y)
 			rz.append(r.z)
-	resTypes = map(hash8, resTypesStr)
-	molIds = map(hash8, molIdsStr)
-	return np.array((np.array(bondNums), np.array(resTypes), np.array(molIds), np.array(bx), np.array(by), np.array(bz), np.array(rx), np.array(ry), np.array(rz)),dtype=object)
+	resTypes = list(map(hash8, resTypesStr))
+	molIds = list(map(hash8, molIdsStr))
+	return np.array((np.array(bondNums), np.array(resTypes), np.array(molIds), np.array(bx), np.array(by), np.array(bz), np.array(rx), np.array(ry), np.array(rz)))
 
 
 def createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [], allowedResTypes = [], allowedMolIds = [], allowedAtomNums = []):
@@ -83,39 +83,33 @@ def calculateRdfForReference(config, refAtom, npAtoms, rmin = 0., rmax = -1., nb
 	drTrim = notSelf * notSameMolecule * np.sqrt(drxTrim**2 + dryTrim**2 + drzTrim**2)
 	drTrimMasked = np.ma.masked_equal(drTrim, 0.)
 	if drTrimMasked.count() > 0:
-		#sys.stderr.write(str(np.histogram(drTrimMasked.compressed(), bins = nbin, range = (rmin, rmax))))
 		return np.histogram(drTrimMasked.compressed(), bins = nbin, range = (rmin, rmax))
 	else:
 		raise NameError("No values to calculate")
 
 
 def calculateAveCosSqForReference(config, refBond, npBonds, rcut, excludeSelf = True, sameMolecule = True):
-	sys.stderr.write("Function: calculateAveCosSqForReference; sameMolecule = " + str(sameMolecule) + "\n")
-	#bxRef = refBond.atom2.pos.x - refBond.atom1.pos.x
-	#byRef = refBond.atom2.pos.y - refBond.atom1.pos.y
-	#bzRef = refBond.atom2.pos.z - refBond.atom1.pos.z
 	bRef, bRefCenter = config.bond_vector_by_num(refBond.num)
-	bxRef, byRef, bzRef = bRef.x, bRef.y, bRef.z
-	if bxRef != 0. or byRef != 0. or bzRef != 0.:
+	if bRef.x != 0. or bRef.y != 0. or bRef.z != 0.:
 		bx, by, bz = npBonds[3], npBonds[4], npBonds[5]
-		drx = npBonds[6] - bRefCenter.x #float(( refBond.atom1.pos.x + refBond.atom2.pos.x) / 2.)
-		dry = npBonds[7] - bRefCenter.y #float(( refBond.atom1.pos.y + refBond.atom2.pos.y) / 2.)
-		drz = npBonds[8] - bRefCenter.z #float(( refBond.atom1.pos.z + refBond.atom2.pos.z) / 2.)
+		drx = npBonds[6] - bRefCenter.x
+		dry = npBonds[7] - bRefCenter.y
+		drz = npBonds[8] - bRefCenter.z
 		drxTrim = drx - config.box().x * np.around(drx / config.box().x)
 		dryTrim = dry - config.box().y * np.around(dry / config.box().y)
 		drzTrim = drz - config.box().z * np.around(drz / config.box().z)
 		rsq = drxTrim**2 + dryTrim**2 + drzTrim**2
 		if rcut >= 0.: inRange = rsq <= rcut**2
 		else: inRange = 1.
-		if excludeSelf: notSelf = np.not_equal(npBonds[0],refBond.num)
+		if excludeSelf: notSelf = npBonds[0] != refBond.num
 		else: notSelf = 1.
 		if not sameMolecule:
 			emptyMolId = npBonds[2] == hash8('')
 			if np.sum(emptyMolId) > 0:
 				raise NameError("We should omit the atoms belonging to the same molecules, but some mol_ids are empty")
-			notSameMolecule = np.not_equal(npBonds[2],hash8(refBond.atom1.mol_id))
+			notSameMolecule = npBonds[2] != hash8(refBond.atom1.mol_id)
 		else: notSameMolecule = 1.
-		cosSqNormed = inRange * notSelf * notSameMolecule * ( bxRef * bx + byRef * by + bzRef * bz )**2 / ( bxRef**2 + byRef**2 + bzRef**2 ) / ( bx**2 + by**2 + bz**2)
+		cosSqNormed = inRange * notSelf * notSameMolecule * ( bRef.x * bx + bRef.y * by + bRef.z * bz )**2 / ( bRef.x**2 + bRef.y**2 + bRef.z**2 ) / ( bx**2 + by**2 + bz**2)
 		cosSqNormedMasked = np.ma.masked_equal(cosSqNormed, 0.)
 		if cosSqNormedMasked.count() > 0:
 			return np.ma.average(cosSqNormedMasked)
