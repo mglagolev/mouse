@@ -38,7 +38,7 @@ def createNumpyBondsArrayFromConfig(config, allowedBondTypes = [], allowedResTyp
 			rz.append(r.z)
 	resTypes = map(hash8, resTypesStr)
 	molIds = map(hash8, molIdsStr)
-	return np.array((np.array(bondNums), np.array(resTypes), np.array(molIds), np.array(bx), np.array(by), np.array(bz), np.array(rx), np.array(ry), np.array(rz)))
+	return np.array((np.array(bondNums), np.array(resTypes), np.array(molIds), np.array(bx), np.array(by), np.array(bz), np.array(rx), np.array(ry), np.array(rz)),dtype=object)
 
 
 def createNumpyAtomsArrayFromConfig(config, allowedAtomTypes = [], allowedResTypes = [], allowedMolIds = [], allowedAtomNums = []):
