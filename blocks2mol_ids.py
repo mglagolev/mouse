@@ -12,7 +12,7 @@ parser.add_argument('frame', metavar = 'data', type = str, nargs = 1, help = 'sn
 
 parser.add_argument('output', metavar = 'data', type = str, nargs = 1, help = 'output')
 
-parser.add_argument('--segment', metavar = 'number', type = int, nargs = 1, help = 'segment length for analysis')
+parser.add_argument('--extrabond-length', metavar = 'number', type = int, nargs = '*', help = 'add extra bonds of that length in terms of bead positions along the backbone')
 
 args = parser.parse_args()
 
@@ -30,19 +30,22 @@ for atom in atoms:
     atom.mol_id = str(mol_id)
     prevtype = atom.type
 
-n_bond_types = len(list(set(bond.type for bond in frame.bonds())))    
-bond_num = len(frame.bonds())
-for i in range(1, len(frame.atoms()) - args.segment[0] + 2):
-    atom1 = frame.atom_by_num(i)
-    atom2 = frame.atom_by_num(i + args.segment[0] - 1)
-    if atom1.mol_id == atom2.mol_id:
-        atom_type = atom1.type
-        bond = Bond()
-        bond.atom1 = atom1
-        bond.atom2 = atom2
-        bond.type = str(int(atom1.type) + n_bond_types)
-        bond_num += 1
-        bond.num = bond_num
-        frame.insert_bond(bond)
+try:
+    segment = args.extrabond_length[0]
+    n_bond_types = len(list(set(bond.type for bond in frame.bonds())))    
+    bond_num = len(frame.bonds())
+    for i in range(1, len(frame.atoms()) - segment + 2):
+        atom1 = frame.atom_by_num(i)
+        atom2 = frame.atom_by_num(i + segment - 1)
+        if atom1.mol_id == atom2.mol_id:
+            atom_type = atom1.type
+            bond = Bond()
+            bond.atom1 = atom1
+            bond.atom2 = atom2
+            bond.type = str(int(atom1.type) + n_bond_types)
+            bond_num += 1
+            bond.num = bond_num
+            frame.insert_bond(bond)
+except IndexError: pass
         
 frame.write_lmp_data(args.output[0])
