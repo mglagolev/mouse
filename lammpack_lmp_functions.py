@@ -15,17 +15,21 @@ def BondFromLmpDataLine(line, config):
 def AtomFromLmpDataLine(line):
 	atom = lammpack_types.Atom()
 	linesplit = line.split()
+	nvalues = len(linesplit)
+	atom.id = linesplit[0]
 	atom.num = int(linesplit[0])
 	atom.mol_id = linesplit[1]
 	atom.type = linesplit[2]
 	#atom.res_num = atom.num
 	atom.res_num = int(atom.mol_id)
-	atom.pos.x = float(linesplit[3])
-	atom.pos.y = float(linesplit[4])
-	atom.pos.z = float(linesplit[5])
-	atom.pbc.x = int(linesplit[6])
-	atom.pbc.y = int(linesplit[7])
-	atom.pbc.z = int(linesplit[8])
+	if len(linesplit) == 9:
+		atom.charge = float(linesplit[3])
+	atom.pos.x = float(linesplit[nvalues - 6])
+	atom.pos.y = float(linesplit[nvalues - 5])
+	atom.pos.z = float(linesplit[nvalues - 4])
+	atom.pbc.x = int(linesplit[nvalues - 3])
+	atom.pbc.y = int(linesplit[nvalues - 2])
+	atom.pbc.z = int(linesplit[nvalues - 1])
 	return atom
 
 def AngleFromLmpDataLine(line):
