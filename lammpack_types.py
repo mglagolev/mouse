@@ -12,6 +12,7 @@ from gro_functions import *
 from clustering_functions import *
 import functools
 import numpy as np
+import copy
 
 def hash8(s):
 	return abs(hash(s)) % (10 ** 8)
@@ -35,6 +36,7 @@ class Atom:
 		self.pbc = vector3d.Vector3d(0,0,0)
 		self.neighbors = []
 		self.inum = 0 #Internal number within a frame
+		self.charge = 0.
 
 	def pdb_str(self):
 		if self.is_hetatm:
@@ -144,6 +146,7 @@ class Config:
 		self._box = vector3d.Vector3d()
 		self._box_center = vector3d.Vector3d()
 		self.title = ""
+		self.timestep = 0
 		self._atoms_by_num = {}
 		self._atoms_by_id = {}
 		self._bonds_by_num = {}
@@ -337,6 +340,62 @@ class Config:
 
 	def read_lmp_dump(self, lmp_dump):
 		raise NameError('Reading LAMMPS dump is not yet implemented')
+		
+	def return_extra_frames_from_lmp_dump(self, lmp_dump, coords_type = "scaled"):
+		''' Create a list of system configurations, taking data from a LAMMPS dump file (lmp_dump)
+		and all of the remaining data from the current configuration.
+		Preferred coordinate types:
+		scaled - read xs, ys, zs
+		cut - read xc, yc, zc
+		uncut - read xu, yu, zu '''
+		configs = []
+		configs_count = 0
+		fatom = open(lmp_dump, 'r')
+		while 1:
+			itemname = fatom.readline()[6:-1]	#cut off 'ITEM: ' at the beginning and '\n' in the end of the line
+			if len(itemname) == 0: break
+			elif itemname == 'TIMESTEP':
+				nstep_atom = int(fatom.readline())
+				if configs_count >= 1:
+					configs.append(new_config)
+				configs_count += 1
+				new_config = copy.deepcopy(self)
+				new_config.timestep = nstep_atom
+			elif itemname == 'NUMBER OF ATOMS':
+				natom = int(fatom.readline())
+				if natom != len(self.atoms()):
+					raise NameError('Error reading extra frame for a configuration with ' + str(len(self.atoms())) + ' from a dump file with ' + str(natom) + ' atoms\n')
+			elif itemname[:10] == 'BOX BOUNDS':
+				x = fatom.readline().split()
+				xlo, xhi = float(x[0]), float(x[1])
+				x = fatom.readline().split()
+				ylo, yhi = float(x[0]), float(x[1])
+				x = fatom.readline().split()
+				zlo, zhi = float(x[0]), float(x[1])
+				new_config.set_box(vector3d.Vector3d(xhi - xlo, yhi - ylo, zhi - zlo))
+				new_config.set_box_center(vector3d.Vector3d((xlo + xhi) / 2., (ylo + yhi) / 2., (zlo + zhi) / 2.))
+			elif itemname.split()[0] == 'ATOMS':
+				keywords = itemname.split()[1:]
+				for i in range(natom):
+					data = list(map(float, fatom.readline().split()))
+					atom_num = int(data[keywords.index('id')])
+					try:
+						ix, iy, iz = int(data[keywords.index('ix')]), int(data[keywords.index('iy')]), int(data[keywords.index('iz')])
+						new_config.atom_by_num(atom_num).pbc = vector3d.Vector3d(ix, iy, iz)
+					except: pass
+					if coords_type == "scaled":
+						xs, ys, zs = data[keywords.index('xs')], data[keywords.index('ys')], data[keywords.index('zs')]
+						x, y, z = xlo + (xhi - xlo) * xs, ylo + (yhi - ylo) * ys, zlo + (zhi - zlo) * zs		
+					elif coords_type == "cut":
+						xc, yc, zc = data[keywords.index('xc')], data[keywords.index('yc')], data[keywords.index('zc')]
+						x, y, z = xlo + xc, ylo + yc, zlo + zc
+					elif coords_type == "uncut":
+						xu, yu, zu = data[keywords.index('xu')], data[keywords.index('yu')], data[keywords.index('zu')]
+						x, y, z = xu, yu, zu
+					new_config.atom_by_num(atom_num).pos = vector3d.Vector3d(x, y, z)
+			else: pass
+		fatom.close()
+		return configs
 
 	def read_lmp_data(self, lmp_data, bonds = True, angles = True, dihedrals = True):
 		f = open(lmp_data, 'r')
