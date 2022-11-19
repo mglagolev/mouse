@@ -7,6 +7,7 @@ Created on Sat Nov 19 13:36:56 2022
 """
 
 import numpy as np
+import pdb
 
 def calculate_squared_distances(coordinates, reference_coordinates, box):
     """
@@ -57,9 +58,33 @@ def calculate_squared_distances(coordinates, reference_coordinates, box):
     
     return rsq
 
+def calculate_distances(coordinates, reference_coordinates, box):
+    """
+    
+
+    Parameters
+    ----------
+    coordinates : TYPE
+        DESCRIPTION.
+    reference_coordinates : TYPE
+        DESCRIPTION.
+    box : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    rsq = calculate_squared_distances(coordinates, reference_coordinates, box)
+    
+    r = np.sqrt(rsq)
+    
+    return r
+
 def neighbor_mask(coordinates: [np.ndarray, np.ndarray, np.ndarray],
                   reference_coordinates: np.ndarray(3),
-                  box, r_min = 0., r_max = 0.):
+                  box, r_min = 0., r_max = 0., backend = "numpy"):
     """
     
     This function returns the mask which can be applied to a numpy array
@@ -94,8 +119,18 @@ def neighbor_mask(coordinates: [np.ndarray, np.ndarray, np.ndarray],
         that are not neighbors of the reference point.
 
     """
-    
-    rsq = calculate_squared_distances(coordinates, reference_coordinates, box)
+    if backend == "mda":
+        import MDAnalysis as mda
+        stacked_coordinates = np.column_stack((
+            coordinates[0], coordinates[1], coordinates[2]))
+        r = mda.lib.distances.distance_array(
+            stacked_coordinates, reference_coordinates, box,
+            backend = "OpenMP")
+        r = r.reshape((-1,))
+        rsq = np.multiply(r, r)
+    elif backend == "numpy":
+        rsq = calculate_squared_distances(
+            coordinates, reference_coordinates, box)
     
     # consider r_min as non-negative. For r_min <= 0, the check can be omitted.
     if r_min > 0.:
