@@ -14,7 +14,7 @@ def calculate_cos_sq_for_reference(
         vector_components: [np.ndarray, np.ndarray, np.ndarray],
         vector_midpoints: [np.ndarray, np.ndarray, np.ndarray],
         ref_components: np.ndarray(3), ref_midpoint: np.ndarray(3),
-        box = [0., 0., 0.], r_min = 0., r_max = -1.,
+        box = [0., 0., 0., 90., 90., 90.], r_min = 0., r_max = -1.,
         vector_attributes = None, excluded_attributes = None):
     """
     
@@ -72,7 +72,7 @@ def calculate_cos_sq_for_reference(
         raise NameError("Zero length of reference vector")
 
     out_of_range = neighbor_mask(vector_midpoints, ref_midpoint,
-                                      box, r_min, r_max)
+                                      box, r_min, r_max, backend = "mda")
     
     # Create an array masking the values that shall be excluded
     if excluded_attributes is not None:

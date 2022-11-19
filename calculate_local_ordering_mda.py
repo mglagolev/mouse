@@ -101,7 +101,7 @@ def calculate_orientation_order_parameter(
         # Calculate ordering parameter value for the reference bond
         cos_sq_masked = calculate_cos_sq_for_reference(
             bond_components, bond_midpoints, ref_components, ref_midpoint,
-            u.dimensions[:3], r_min = r_min, r_max = r_max,
+            u.dimensions, r_min = r_min, r_max = r_max,
             vector_attributes = bond_resids,
             excluded_attributes = excluded_resids)
             
