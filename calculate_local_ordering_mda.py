@@ -8,7 +8,6 @@ Created on Fri Oct 14 17:20:41 2022
 
 import MDAnalysis as mda
 from MDAnalysis import transformations
-import argparse
 import numpy as np
 from ordering import calculate_cos_sq_for_reference
 
@@ -61,20 +60,23 @@ def calculate_orientation_order_parameter(
         
     if r_max == 0.:
         r_max = min(u.dimensions) / 2.
-    #Unwrap all the coordinates, so that all the bond lengths are
-    #real. The closest images of the bonds will be found in the nested
-    #function.
+    # Unwrap all the coordinates, so that all the bond lengths are
+    # real. The closest images of the bonds will be found in the nested
+    # function.
     unwrap = transformations.unwrap(u.atoms)
     u.trajectory.add_transformations(unwrap)
     
-    #Calculate bond components
+    # Calculate bond components
+    # 1D arrays, one for each of the coordinates, provide more efficient
+    # numpy calculations. Converting the data here, outside of the main loop
+    # provided additional 15% speedup in the test runs.
     bx = (u.bonds.atom2.positions[:, 0] - u.bonds.atom1.positions[:, 0])
     by = (u.bonds.atom2.positions[:, 1] - u.bonds.atom1.positions[:, 1])
     bz = (u.bonds.atom2.positions[:, 2] - u.bonds.atom1.positions[:, 2])
     
     bond_components = [bx, by, bz]
     
-    #Calculate bond midpoints
+    # Creating 1D arrays with bond midpoints
     rx = (u.bonds.atom1.positions[:, 0] + u.bonds.atom2.positions[:, 0]) / 2.
     ry = (u.bonds.atom1.positions[:, 1] + u.bonds.atom2.positions[:, 1]) / 2.
     rz = (u.bonds.atom1.positions[:, 2] + u.bonds.atom2.positions[:, 2]) / 2.
@@ -87,16 +89,16 @@ def calculate_orientation_order_parameter(
         bond_resids = None
     
     for bond in u.bonds:
-        #Determine the reference vector components and midpoint
-        #from the bond coordinates
+        # Determine the reference vector components and midpoint
+        # from the bond coordinates
         ref_components = bond.atoms[1].position - bond.atoms[0].position
         ref_midpoint = (bond.atoms[0].position + bond.atoms[1].position) / 2.
-        #If needed, exclude bonds from the same molecule
+        # If needed, exclude bonds from the same molecule
         if not same_molecule:
             excluded_resids = bond.atoms[0].resid
         else:
             excluded_resids = None
-        #Calculate ordering parameter value for the reference bond
+        # Calculate ordering parameter value for the reference bond
         cos_sq_masked = calculate_cos_sq_for_reference(
             bond_components, bond_midpoints, ref_components, ref_midpoint,
             u.dimensions[:3], r_min = r_min, r_max = r_max,
@@ -118,8 +120,8 @@ def calculate_orientation_order_parameter(
 
     if mode == "average":
         if i_s > 0:
-            #Normalize the values. Normalization procedure ensures that double
-            #consideration of each of the bonds doesn't affect the result
+            # Normalize the values. Normalization procedure ensures that double
+            # consideration of each of the bonds doesn't affect the result
             s = 1.5 * cos_sq_sum / i_s - 0.5
             return s
         else:
@@ -130,39 +132,45 @@ def calculate_orientation_order_parameter(
         cos_sq_hist = cos_sq_raw_hist / norm
         return cos_sq_hist
 
-parser = argparse.ArgumentParser(
-    description = 'Calculate local ordering parameter')
-
-parser.add_argument(
-    'input', metavar = 'INPUT', action = "store", help = "input file")
-
-parser.add_argument(
-    '--r_max', metavar = 'R_max', type = float, nargs = '?',
-    default = 0., help = "outer cutoff radius")
-
-parser.add_argument(
-    '--r_min', metavar = 'R_min', type = float, nargs = '?',
-    default = 0., help = "inner cutoff radius")
-
-parser.add_argument(
-    '--mode', metavar = 'MODE', type = str, nargs = '?',
-    default = "average", help = "mode: average or historgram")
-
-parser.add_argument(
-    '--n_bins', metavar = 'N_bins', type = int, nargs = '?',
-    default = 150, help = "number of bins of the histogram")
-
-parser.add_argument(
-    "--same-molecule", action = "store_true",
-    help = "Hide the bonds transversing the periodic boundary conditions")
-
-args = parser.parse_args()
-
-u = mda.Universe(args.input)
+if __name__ == "__main__":
     
-s = calculate_orientation_order_parameter(u, r_min = args.r_min,
-                                          r_max = args.r_max, mode = args.mode,
-                                          n_bins = args.n_bins,
-                                          same_molecule = args.same_molecule)
+    import argparse
 
-print(str(s) + "\n")
+    parser = argparse.ArgumentParser(
+        description = 'Calculate local ordering parameter')
+
+    parser.add_argument(
+        'input', metavar = 'INPUT', action = "store", help = "input file")
+
+    parser.add_argument(
+        '--r_max', metavar = 'R_max', type = float, nargs = '?',
+        default = 0., help = "outer cutoff radius")
+
+    parser.add_argument(
+        '--r_min', metavar = 'R_min', type = float, nargs = '?',
+        default = 0., help = "inner cutoff radius")
+
+    parser.add_argument(
+        '--mode', metavar = 'MODE', type = str, nargs = '?',
+        default = "average", help = "mode: average or historgram")
+
+    parser.add_argument(
+        '--n_bins', metavar = 'N_bins', type = int, nargs = '?',
+        default = 150, help = "number of bins of the histogram")
+
+    parser.add_argument(
+        "--same-molecule", action = "store_true",
+        help = "Hide the bonds transversing the periodic boundary conditions")
+
+    args = parser.parse_args()
+
+    u = mda.Universe(args.input)
+    
+    s = calculate_orientation_order_parameter(u, r_min = args.r_min,
+                                              r_max = args.r_max,
+                                              mode = args.mode,
+                                              n_bins = args.n_bins,
+                                              same_molecule
+                                              = args.same_molecule)
+
+    print(str(s) + "\n")
