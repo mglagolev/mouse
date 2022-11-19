@@ -7,14 +7,10 @@ Created on Thu Oct 20 23:34:30 2022
 
 TODOs:
 
- - move neighbor search to a separate function
- - move from [xarray, yarray, zarray] data structures to 
- [atom1_coords, atom2_coords, ...] data structures
  - support working with multiple timesteps 
  (mind that the box size can vary between the timesteps)
 """
 
-import argparse
 import MDAnalysis as mda
 import numpy as np
 import networkx as nx
@@ -32,8 +28,6 @@ def determine_aggregates(u: mda.Universe, r_max: float, selection = None):
     # Create numpy array with a list of atom indices
     atom_indices = atoms.indices
     # Create numpy array with the coordinates of the atoms
-    # TODO: consider switching the dimensions from (3, n_atom) to (n_atom, 3)
-    #to comply with the MDAnalysis data types. 
     rx = atoms.positions[:, 0]
     ry = atoms.positions[:, 1]
     rz = atoms.positions[:, 2]
@@ -66,23 +60,28 @@ def determine_aggregates(u: mda.Universe, r_max: float, selection = None):
         aggregates.append(aggregate)
     return aggregates
 
-parser = argparse.ArgumentParser(
-    description = 'Determine aggregates, based on lists of neighbors\
-    determined by inter-particle distance')
+if __name__ == "__main__":
+    
+    import argparse
 
-parser.add_argument(
-    'input', metavar = 'INPUT', action = "store", help = "input file")
+    parser = argparse.ArgumentParser(
+        description = 'Determine aggregates, based on lists of neighbors\
+        determined by inter-particle distance')
 
-parser.add_argument(
-    '--r_max', metavar = 'R_max', type = float, nargs = '?',
-    default = 1.2, help = "neighbor cutoff")
+    parser.add_argument(
+        'input', metavar = 'INPUT', action = "store", help = "input file")
 
-parser.add_argument(
-    '--selection', metavar = 'QUERY', type = str, nargs = '?',
-    help = "Consider only selected atoms, use MDAnalysis selection language")
+    parser.add_argument(
+        '--r_max', metavar = 'R_max', type = float, nargs = '?',
+        default = 1.2, help = "neighbor cutoff")
 
-args = parser.parse_args()
+    parser.add_argument(
+        '--selection', metavar = 'QUERY', type = str, nargs = '?',
+        help 
+        = "Consider only selected atoms, use MDAnalysis selection language")
 
-u = mda.Universe(args.input)
+    args = parser.parse_args()
 
-determine_aggregates(u, args.r_max, args.selection)
+    u = mda.Universe(args.input)
+
+    determine_aggregates(u, args.r_max, args.selection)
