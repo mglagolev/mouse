@@ -7,6 +7,7 @@ Created on Tue Oct 18 14:46:18 2022
 """
 
 import numpy as np
+from neighbor import neighbor_mask
 
     
 def calculate_cos_sq_for_reference(
@@ -63,36 +64,17 @@ def calculate_cos_sq_for_reference(
         and blacklisted attributes
 
     """
-    #If r_max is set to 0, determine the largest possible cutoff based on box.
+    # If r_max is set to 0, determine the largest possible cutoff based on box.
     if r_max == 0.:
         r_max = np.min(box / 2.)
     
     if np.linalg.norm(ref_components) == 0.:
         raise NameError("Zero length of reference vector")
-    drx = vector_midpoints[0] - ref_midpoint[0]
-    dry = vector_midpoints[1] - ref_midpoint[1]
-    drz = vector_midpoints[2] - ref_midpoint[2]
 
-    #Find the bond image which is closest to the reference vector
-    if box[0] > 0.:
-        drx = drx - box[0] * np.around(drx / box[0])
-    if box[1] > 0.:
-        dry = dry - box[1] * np.around(dry / box[1])
-    if box[2] > 0.:
-        drz = drz - box[2] * np.around(drz / box[2])
-
-    #Calculate the distance between the centers of the bonds
-    rsq = drx**2 + dry**2 + drz**2
+    out_of_range = neighbor_mask(vector_midpoints, ref_midpoint,
+                                      box, r_min, r_max)
     
-    #Create an array masking the values that are outside the cutoffs
-    #The default value of -1 will result in no cutoff
-    if r_max >= 0.:
-        out_of_range = np.logical_or(np.less(rsq, r_min**2),
-                                  np.greater(rsq, r_max**2))
-    else:
-        out_of_range = np.zeros(vector_components[0].size)
-    
-    #Create an array masking the values that shall be excluded
+    # Create an array masking the values that shall be excluded
     if excluded_attributes is not None:
         excluded = np.equal(vector_attributes, excluded_attributes)
     else:
@@ -100,8 +82,8 @@ def calculate_cos_sq_for_reference(
     
     masked_data = np.logical_or(out_of_range, excluded)
     
-    #Calculate the nparray for normalized cos^2(theta), where theta are the
-    #angles between the bonds and the reference vector
+    # Calculate the nparray for normalized cos^2(theta), where theta are the
+    # angles between the bonds and the reference vector
     cos_sq_normed = (
             (ref_components[0] * vector_components[0]
            + ref_components[1] * vector_components[1]
@@ -109,5 +91,5 @@ def calculate_cos_sq_for_reference(
           / np.linalg.norm(ref_components)**2
           / np.linalg.norm(vector_components, axis = 0)**2)
     
-    #Mask the invalid values and return
+    # Mask the invalid values and return
     return np.ma.array(cos_sq_normed, mask = masked_data)
