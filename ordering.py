@@ -71,8 +71,9 @@ def calculate_cos_sq_for_reference(
     if np.linalg.norm(ref_components) == 0.:
         raise NameError("Zero length of reference vector")
 
+    # The backend can be "NumPy", "MDA-serial", "MDA-OpenMP"
     out_of_range = neighbor_mask(vector_midpoints, ref_midpoint,
-                                      box, r_min, r_max, backend = "mda")
+                                      box, r_min, r_max, backend = "NumPy")
     
     # Create an array masking the values that shall be excluded
     if excluded_attributes is not None:
