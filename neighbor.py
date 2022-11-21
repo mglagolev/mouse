@@ -7,7 +7,6 @@ Created on Sat Nov 19 13:36:56 2022
 """
 
 import numpy as np
-import pdb
 
 def calculate_squared_distances(coordinates, reference_coordinates, box):
     """
@@ -24,7 +23,8 @@ def calculate_squared_distances(coordinates, reference_coordinates, box):
     Parameters
     ----------
     coordinates : [np.ndarray, np.ndarray, np.ndarray]
-        DESCRIPTION.
+        Three 1D arrays, containing the values of the corresponding
+        coordinate for all of the points.
         
     reference_coordinates : np.ndarray(3)
         The cartesian coordinates of a reference point.
@@ -61,20 +61,32 @@ def calculate_squared_distances(coordinates, reference_coordinates, box):
 def calculate_distances(coordinates, reference_coordinates, box):
     """
     
-
+    This function calculates distances between the points defined by
+    the coordinates array [x_array, y_array, z_array] and the reference
+    point [x_ref, y_ref, z_ref], taking into account the periodic boundary
+    conditions defined by the box.
+    It takes the square root from the squared distances calculated by the
+    corresponding function.
+    
     Parameters
     ----------
-    coordinates : TYPE
-        DESCRIPTION.
-    reference_coordinates : TYPE
-        DESCRIPTION.
-    box : TYPE
-        DESCRIPTION.
+    coordinates : [np.ndarray, np.ndarray, np.ndarray]
+        Three 1D arrays, containing the values of the corresponding
+        coordinate for all of the points.
+        
+    reference_coordinates : np.ndarray(3)
+        The cartesian coordinates of a reference point.
+        
+    box : np.ndarray, with shape[0] >= 3.
+        The box from MDAnalysis library,
+        which contains dimensions and angles, can be provided as is
+        
 
     Returns
     -------
-    None.
-
+    r: np.ndarray
+        A numpy array of distances between the points with coordinates
+        defined by the input arrays and the reference point.
     """
     rsq = calculate_squared_distances(coordinates, reference_coordinates, box)
     
@@ -84,7 +96,7 @@ def calculate_distances(coordinates, reference_coordinates, box):
 
 def neighbor_mask(coordinates: [np.ndarray, np.ndarray, np.ndarray],
                   reference_coordinates: np.ndarray(3),
-                  box, r_min = 0., r_max = 0., backend = "numpy"):
+                  box, r_min = 0., r_max = 0., backend = "NumPy"):
     """
     
     This function returns the mask which can be applied to a numpy array
@@ -111,6 +123,18 @@ def neighbor_mask(coordinates: [np.ndarray, np.ndarray, np.ndarray],
         
     r_max : float
         The maximum distance between the points to be considered neighbors
+        
+    backend: string
+        Backend to calculate the distances between the points in the array
+        and the reference point.
+        Currently supported options are:
+            NumPy: use built-in code based on NumPy vector operations
+                (default). According to the tests, this is currently the
+                fastest option.
+            MDA-serial: use the "distance_array" function from MDAnalysis
+                with the "serial" backend.
+            MDA-OpenMP: use the "distance_array" function from MDAnalysis
+                with the "OpenMP" backend.
 
     Returns
     -------
@@ -119,30 +143,38 @@ def neighbor_mask(coordinates: [np.ndarray, np.ndarray, np.ndarray],
         that are not neighbors of the reference point.
 
     """
-    if backend == "mda":
+    # MDAnalysis currently supports two of it's own backends to calculate the
+    # neighbor matrix, "serial" and "OpenMP". This function will take the
+    # values "MDA-serial" or "MDA-OpenMP" and use MDAnalysis with the
+    # corresponding backend
+    if backend[:3] == "MDA":
         import MDAnalysis as mda
         stacked_coordinates = np.column_stack((
             coordinates[0], coordinates[1], coordinates[2]))
         r = mda.lib.distances.distance_array(
             stacked_coordinates, reference_coordinates, box,
-            backend = "OpenMP")
-        r = r.reshape((-1,))
-        rsq = np.multiply(r, r)
-    elif backend == "numpy":
-        rsq = calculate_squared_distances(
+            backend = backend[4:])
+        values = r.reshape((-1,))
+        min_value = r_min
+        max_value = r_max
+    # Use built-in NumPy function
+    elif backend == "NumPy":
+        values = calculate_squared_distances(
             coordinates, reference_coordinates, box)
+        min_value = r_min**2
+        max_value = r_max**2
     
     # consider r_min as non-negative. For r_min <= 0, the check can be omitted.
     if r_min > 0.:
         # to omit the r_max check, a negative value can be provided, r_max = -1
         if r_max >= 0.:
-            out_of_range = np.logical_or(np.less(rsq, r_min**2),
-                              np.greater(rsq, r_max**2))
+            out_of_range = np.logical_or(np.less(values, min_value),
+                              np.greater(values, max_value))
         else:
-            out_of_range = np.less(rsq, r_min**2)
+            out_of_range = np.less(values, min_value)
     else:
         if r_max >= 0.:
-            out_of_range = np.greater(rsq, r_max**2)
+            out_of_range = np.greater(values, max_value)
         else:
             out_of_range = np.zeros(coordinates[0].size)
     
