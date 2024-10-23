@@ -46,6 +46,6 @@ try:
             bond_num += 1
             bond.num = bond_num
             frame.insert_bond(bond)
-except IndexError: pass
+except: pass
         
 frame.write_lmp_data(args.output[0])
